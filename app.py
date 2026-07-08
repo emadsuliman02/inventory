@@ -15,10 +15,13 @@
 5) شارك الرابط: http://<عنوان-IP-لهذا-الجهاز>:5000 مع الموظفين على نفس الشبكة
 """
 
-from flask import Flask, jsonify, request, session, send_from_directory
+from flask import Flask, jsonify, request, session, send_from_directory, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from openpyxl import Workbook, load_workbook
+import io
 import json
 import os
+import re
 import uuid
 import secrets
 
@@ -85,6 +88,100 @@ def allowed_pages_for(account):
 
 TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure']
 ADMIN_ONLY_TABLES = {'secure'}
+
+# ------------------------------------------------------------------
+# تصدير / استيراد Excel — ترتيب وتسمية الأعمدة لكل جدول
+# ------------------------------------------------------------------
+ASSET_SCHEMA = [
+    ('name', 'اسم الجهاز'), ('location', 'الموقع'), ('floor', 'الدور'),
+    ('custodian', 'بعهدة من'), ('model', 'الموديل'), ('specs', 'المواصفات'), ('status', 'الحالة'),
+]
+
+TABLE_SCHEMAS = {
+    'employees': [
+        ('name', 'الاسم'), ('empId', 'الرقم الوظيفي'), ('title', 'المسمى الوظيفي'),
+        ('ext', 'رقم التحويلة'), ('email', 'البريد الإلكتروني'), ('emailPass', 'رمز البريد'),
+        ('username', 'اسم المستخدم'), ('userPass', 'رمز اليوزر'), ('device', 'الجهاز المرتبط'),
+        ('office', 'المكتب / القسم'), ('status', 'حالة الحساب'), ('notes', 'ملاحظات'),
+    ],
+    'devices': [
+        ('code', 'اسم الجهاز'), ('type', 'النوع'), ('serial', 'الرقم التسلسلي'),
+        ('notWorking', 'الجهاز لا يعمل'), ('user', 'الموظف المستلم للجهاز'), ('office', 'القسم'),
+        ('ip', 'عنوان IP'), ('os', 'نظام التشغيل'), ('cpu', 'المعالج (CPU)'),
+        ('mbModel', 'موديل اللوحة الأم'), ('mbSlots', 'سلوتات الرام المدعومة'), ('mbRamType', 'نوع الرام (DDR)'),
+        ('ram', 'الرام (وصف)'), ('storage', 'الهارد ديسك (وصف)'), ('accessories', 'الملحقات'),
+        ('licOffice', 'ترخيص Office'), ('licWindows', 'ترخيص Windows'), ('status', 'الحالة'), ('notes', 'ملاحظات'),
+    ],
+    'switches': [
+        ('name', 'الاسم / الكود'), ('location', 'الموقع'), ('ports', 'عدد المنافذ'),
+        ('ip', 'عنوان IP'), ('linked', 'مربوط بـ'), ('status', 'الحالة'),
+    ],
+    'routers': [
+        ('name', 'الاسم / الكود'), ('location', 'الموقع'), ('ip', 'عنوان IP'),
+        ('ssid', 'اسم الشبكة (SSID)'), ('status', 'الحالة'),
+    ],
+    'servers': ASSET_SCHEMA,
+    'security': ASSET_SCHEMA,
+    'doors': ASSET_SCHEMA,
+    'secure': [
+        ('linked', 'مرتبط بـ'), ('user', 'اسم المستخدم'), ('pass', 'كلمة المرور'), ('notes', 'ملاحظات'),
+    ],
+}
+
+BOOL_FIELDS = {'notWorking', 'licOffice', 'licWindows'}
+ID_COLUMN_LABEL = 'المعرّف الداخلي (لا تعدله)'
+
+
+def record_to_row(table, record):
+    row = []
+    for key, _label in TABLE_SCHEMAS[table]:
+        if table == 'devices' and key == 'mbModel':
+            value = (record.get('motherboard') or {}).get('model', '')
+        elif table == 'devices' and key == 'mbSlots':
+            value = (record.get('motherboard') or {}).get('maxRamSlots', '')
+        elif table == 'devices' and key == 'mbRamType':
+            value = (record.get('motherboard') or {}).get('ramType', '')
+        elif table == 'devices' and key == 'accessories':
+            value = '، '.join(record.get('accessories') or [])
+        elif key in BOOL_FIELDS:
+            value = 'نعم' if record.get(key) else 'لا'
+        else:
+            value = record.get(key, '')
+        row.append(value)
+    return row
+
+
+def row_to_record(table, row_dict, existing=None):
+    record = dict(existing) if existing else {}
+    motherboard = dict(record.get('motherboard') or {}) if table == 'devices' else None
+
+    for key, label in TABLE_SCHEMAS[table]:
+        if label not in row_dict:
+            continue
+        raw = row_dict[label]
+        value = '' if raw is None else str(raw).strip()
+
+        if table == 'devices' and key == 'mbModel':
+            motherboard['model'] = value
+        elif table == 'devices' and key == 'mbSlots':
+            motherboard['maxRamSlots'] = value
+        elif table == 'devices' and key == 'mbRamType':
+            motherboard['ramType'] = value
+        elif table == 'devices' and key == 'accessories':
+            record['accessories'] = [a.strip() for a in re.split('[,،]', value) if a.strip()]
+        elif key in BOOL_FIELDS:
+            record[key] = value in ('نعم', 'Yes', 'yes', 'true', '1')
+        else:
+            record[key] = value
+
+    if table == 'devices':
+        record['motherboard'] = motherboard
+        record.setdefault('ramModules', (existing or {}).get('ramModules', []))
+        record.setdefault('storageDisks', (existing or {}).get('storageDisks', []))
+    if table in ('servers', 'security', 'doors'):
+        record.setdefault('history', (existing or {}).get('history', []))
+
+    return record
 
 
 def data_path(table):
@@ -302,6 +399,99 @@ def delete_record(table, record_id):
     records = [r for r in records if r.get('id') != record_id]
     save_table(table, records)
     return jsonify({'success': True})
+
+
+# ------------------------------------------------------------------
+# تصدير / استيراد Excel
+# ------------------------------------------------------------------
+@app.route('/api/<table>/export', methods=['GET'])
+def export_table(table):
+    if table not in TABLE_SCHEMAS:
+        return jsonify({'error': 'جدول غير معروف'}), 404
+    err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
+    if err:
+        return err
+
+    records = load_table(table)
+    schema = TABLE_SCHEMAS[table]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = table[:31]
+    ws.append([label for _key, label in schema] + [ID_COLUMN_LABEL])
+    for record in records:
+        ws.append(record_to_row(table, record) + [record.get('id', '')])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf, as_attachment=True, download_name=f'{table}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@app.route('/api/<table>/import', methods=['POST'])
+def import_table(table):
+    if table not in TABLE_SCHEMAS:
+        return jsonify({'error': 'جدول غير معروف'}), 404
+    err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
+    if err:
+        return err
+
+    uploaded = request.files.get('file')
+    if not uploaded:
+        return jsonify({'error': 'لم يتم اختيار ملف'}), 400
+
+    try:
+        wb = load_workbook(uploaded, data_only=True)
+        ws = wb.active
+    except Exception:
+        return jsonify({'error': 'تعذّر قراءة الملف — تأكد إنه ملف Excel صالح (xlsx)'}), 400
+
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return jsonify({'error': 'الملف فاضي'}), 400
+    headers = [str(h).strip() if h is not None else '' for h in rows[0]]
+
+    records = load_table(table)
+    by_id = {r['id']: r for r in records if r.get('id')}
+
+    added = 0
+    updated = 0
+    skipped = []
+    for raw_row in rows[1:]:
+        if raw_row is None or all(c is None or str(c).strip() == '' for c in raw_row):
+            continue
+        row_dict = dict(zip(headers, raw_row))
+        record_id = str(row_dict.get(ID_COLUMN_LABEL) or '').strip()
+        existing = by_id.get(record_id) if record_id else None
+
+        record = row_to_record(table, row_dict, existing)
+        row_label = record.get('name') or record.get('code') or record.get('linked') or record_id or '؟'
+
+        if table == 'employees' and record.get('device'):
+            owner = next(
+                (r for r in records if r.get('device') == record['device'] and r.get('id') != (existing or {}).get('id')),
+                None,
+            )
+            if owner:
+                skipped.append(f"{row_label}: الجهاز {record['device']} بعهدة {owner.get('name')} بالفعل")
+                continue
+
+        if existing:
+            record['id'] = existing['id']
+            idx = next(i for i, r in enumerate(records) if r['id'] == existing['id'])
+            records[idx] = record
+            updated += 1
+        else:
+            record['id'] = uuid.uuid4().hex
+            records.append(record)
+            by_id[record['id']] = record
+            added += 1
+
+    save_table(table, records)
+    return jsonify({'success': True, 'added': added, 'updated': updated, 'skipped': skipped})
 
 
 # ------------------------------------------------------------------

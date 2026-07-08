@@ -264,7 +264,7 @@
         <input id="emp-search" placeholder="ابحث بالاسم، الرقم الوظيفي، البريد، اليوزر، أو اسم الجهاز..." style="width:100%; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:14px;">
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>قائمة الموظفين</h3><span class="count" id="count-employees">0 سجل</span></div>
+        <div class="panel-head"><h3>قائمة الموظفين</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-employees">0 سجل</span><button class="icon-btn" onclick="exportTable('employees')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('employees')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr>
@@ -289,7 +289,7 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>قائمة الأجهزة</h3><span class="count" id="count-devices">0 سجل</span></div>
+        <div class="panel-head"><h3>قائمة الأجهزة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-devices">0 سجل</span><button class="icon-btn" onclick="exportTable('devices')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('devices')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr>
@@ -315,7 +315,7 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>السويتشات</h3><span class="count" id="count-switches">0 أجهزة</span></div>
+        <div class="panel-head"><h3>السويتشات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-switches">0 أجهزة</span><button class="icon-btn" onclick="exportTable('switches')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('switches')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>المنافذ</th><th>IP</th><th>مربوط بـ</th><th>الحالة</th><th></th></tr></thead>
@@ -324,7 +324,7 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>الراوترات</h3><span class="count" id="count-routers">0 أجهزة</span></div>
+        <div class="panel-head"><h3>الراوترات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-routers">0 أجهزة</span><button class="icon-btn" onclick="exportTable('routers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('routers')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>IP</th><th>SSID</th><th>بيانات الدخول</th><th>الحالة</th><th></th></tr></thead>
@@ -345,7 +345,7 @@
         <button class="btn-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>قائمة السيرفرات</h3><span class="count" id="count-servers">0 سجل</span></div>
+        <div class="panel-head"><h3>قائمة السيرفرات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-servers">0 سجل</span><button class="icon-btn" onclick="exportTable('servers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('servers')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
@@ -365,7 +365,7 @@
         <button class="btn-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>قائمة أجهزة الأمان</h3><span class="count" id="count-security">0 سجل</span></div>
+        <div class="panel-head"><h3>قائمة أجهزة الأمان</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-security">0 سجل</span><button class="icon-btn" onclick="exportTable('security')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('security')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
@@ -385,7 +385,7 @@
         <button class="btn-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>قائمة الأبواب الذكية</h3><span class="count" id="count-doors">0 سجل</span></div>
+        <div class="panel-head"><h3>قائمة الأبواب الذكية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-doors">0 سجل</span><button class="icon-btn" onclick="exportTable('doors')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('doors')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
@@ -405,7 +405,7 @@
         <button class="btn-add" onclick="openSecureForm()">＋ إضافة بيانات دخول</button>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>بيانات الدخول المخزّنة</h3><span class="count" id="count-secure">0 سجلات</span></div>
+        <div class="panel-head"><h3>بيانات الدخول المخزّنة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-secure">0 سجلات</span><button class="icon-btn" onclick="exportTable('secure')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('secure')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
           <thead><tr><th>مرتبط بـ</th><th>اسم المستخدم</th><th>كلمة المرور</th><th>ملاحظات</th><th></th></tr></thead>
@@ -438,6 +438,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<input type="file" id="import-file-input" accept=".xlsx" style="display:none;">
 
 <div class="overlay" id="modal-employee">
   <div class="modal">
@@ -770,6 +771,38 @@ async function apiDelete(table, id){
     return true;
   }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); return false; }
 }
+
+/* ============ تصدير / استيراد Excel ============ */
+function exportTable(table){
+  window.location.href = '/api/'+table+'/export';
+}
+let importTargetTable = null;
+function triggerImport(table){
+  importTargetTable = table;
+  document.getElementById('import-file-input').click();
+}
+document.getElementById('import-file-input').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  const table = importTargetTable;
+  e.target.value = '';
+  importTargetTable = null;
+  if(!file || !table) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  try{
+    const res = await fetch('/api/'+table+'/import', { method:'POST', credentials:'same-origin', body: formData });
+    const body = await res.json().catch(()=>null);
+    if(!res.ok){
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر الاستيراد');
+      return;
+    }
+    let msg = `تم الاستيراد: ${body.added} جديد، ${body.updated} محدّث`;
+    if(body.skipped && body.skipped.length) msg += `، ${body.skipped.length} متجاهل`;
+    showToast(msg);
+    await loadAll();
+  }catch(err){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+});
 
 async function loadAll(){
   const [employees, devices, switches, routers, servers, security, doors, secure, users] = await Promise.all([
