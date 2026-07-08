@@ -131,6 +131,39 @@ TABLE_SCHEMAS = {
 BOOL_FIELDS = {'notWorking', 'licOffice', 'licWindows'}
 ID_COLUMN_LABEL = 'المعرّف الداخلي (لا تعدله)'
 
+# أسماء أعمدة بديلة شائعة (لملفات مصدرها خارجي، مو مصدّرة من النظام نفسه)
+FIELD_ALIASES = {
+    'employees': {
+        'الاسم الكامل': 'name', 'اسم الموظف': 'name', 'اسم الموظف بالكامل': 'name',
+        'الرقم الوظيفي للموظف': 'empId', 'رقم الموظف': 'empId',
+        'الايميل': 'email', 'البريد': 'email', 'البريد الالكتروني': 'email',
+        'اليوزر': 'username', 'اسم اليوزر': 'username',
+        'الجهاز': 'device', 'القسم': 'office', 'المكتب': 'office',
+        'الحالة': 'status',
+    },
+    'devices': {
+        'المعرف': 'code', 'اسم الكمبيوتر': 'code', 'كود الجهاز': 'code',
+        'المستخدم': 'user', 'الموظف': 'user',
+    },
+}
+
+
+def normalize_header(text):
+    text = (text or '').strip()
+    text = re.sub(r'[ً-ْـ]', '', text)  # إزالة التشكيل والتطويل
+    text = text.replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
+    text = text.replace('ة', 'ه').replace('ى', 'ي')
+    return re.sub(r'\s+', ' ', text).strip().lower()
+
+
+def label_lookup(table):
+    lookup = {}
+    for key, label in TABLE_SCHEMAS[table]:
+        lookup[normalize_header(label)] = key
+    for alias, key in FIELD_ALIASES.get(table, {}).items():
+        lookup.setdefault(normalize_header(alias), key)
+    return lookup
+
 
 def record_to_row(table, record):
     row = []
@@ -154,11 +187,12 @@ def record_to_row(table, record):
 def row_to_record(table, row_dict, existing=None):
     record = dict(existing) if existing else {}
     motherboard = dict(record.get('motherboard') or {}) if table == 'devices' else None
+    lookup = label_lookup(table)
 
-    for key, label in TABLE_SCHEMAS[table]:
-        if label not in row_dict:
+    for header, raw in row_dict.items():
+        key = lookup.get(normalize_header(header))
+        if not key:
             continue
-        raw = row_dict[label]
         value = '' if raw is None else str(raw).strip()
 
         if table == 'devices' and key == 'mbModel':
