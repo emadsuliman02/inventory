@@ -18,6 +18,7 @@
 from flask import Flask, jsonify, request, session, send_from_directory, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook, load_workbook
+from datetime import date
 import io
 import json
 import os
@@ -56,7 +57,7 @@ ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
 
 # التبويبات القابلة للتخصيص لحسابات "مستخدم عادي" — لوحة المعلومات دايمًا
 # متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
-ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'network', 'servers', 'security', 'doors']
+ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'custody', 'network', 'servers', 'security', 'doors']
 
 DEFAULT_ACCOUNTS = {
     'administrator': {
@@ -433,6 +434,61 @@ def delete_record(table, record_id):
     records = [r for r in records if r.get('id') != record_id]
     save_table(table, records)
     return jsonify({'success': True})
+
+
+# ------------------------------------------------------------------
+# العهد — تسليم/استرجاع جهاز لموظف، مع مزامنة تبويبي الموظفين والأجهزة
+# ------------------------------------------------------------------
+@app.route('/api/custody/assign', methods=['POST'])
+def assign_custody():
+    err = require_login()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    employee_id = body.get('employeeId')
+    device_id = body.get('deviceId') or None
+
+    employees = load_table('employees')
+    devices = load_table('devices')
+
+    employee = next((e for e in employees if e.get('id') == employee_id), None)
+    if not employee:
+        return jsonify({'error': 'الموظف غير موجود'}), 404
+
+    new_device = None
+    if device_id:
+        new_device = next((d for d in devices if d.get('id') == device_id), None)
+        if not new_device:
+            return jsonify({'error': 'الجهاز غير موجود'}), 404
+        holder = next(
+            (e for e in employees if e.get('device') == new_device.get('code') and e.get('id') != employee_id),
+            None,
+        )
+        if holder:
+            return jsonify({'error': f"الجهاز {new_device['code']} بعهدة {holder.get('name')} بالفعل"}), 409
+
+    today = date.today().isoformat()
+
+    old_device_code = employee.get('device')
+    if old_device_code and (not new_device or old_device_code != new_device.get('code')):
+        old_device = next((d for d in devices if d.get('code') == old_device_code), None)
+        if old_device:
+            if old_device.get('user'):
+                old_device.setdefault('history', []).append({'employee': old_device['user'], 'until': today})
+            old_device['user'] = ''
+
+    if new_device:
+        previous_user = new_device.get('user')
+        if previous_user and previous_user != employee.get('name'):
+            new_device.setdefault('history', []).append({'employee': previous_user, 'until': today})
+        new_device['user'] = employee.get('name')
+
+    employee['device'] = new_device.get('code') if new_device else ''
+
+    save_table('employees', employees)
+    save_table('devices', devices)
+    return jsonify({'success': True, 'employee': employee, 'device': new_device})
 
 
 # ------------------------------------------------------------------

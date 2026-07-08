@@ -193,6 +193,7 @@
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
       <div class="nav-item" data-page="devices"><span class="ic">03</span> أجهزة الكمبيوتر</div>
+      <div class="nav-item" data-page="custody"><span class="ic">📋</span> العهد</div>
       <div class="nav-item" data-page="network"><span class="ic">04</span> الشبكات والراوترات</div>
       <div class="nav-item" data-page="servers"><span class="ic">05</span> السيرفرات</div>
       <div class="nav-item" data-page="security"><span class="ic">06</span> أجهزة الأمان</div>
@@ -297,6 +298,26 @@
             <th>النظام</th><th>التراخيص</th><th>المكتب/القسم</th><th>المستخدم</th><th>الحالة</th><th></th>
           </tr></thead>
           <tbody id="tbody-devices"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="custody">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">📋 العهد</div>
+          <h2>تسليم العهد</h2>
+          <p>سلّم جهاز لموظف أو استرجعه — يتحدّث تبويبا "الموظفون" و"أجهزة الكمبيوتر" تلقائيًا.</p>
+        </div>
+        <button class="btn-add" onclick="openCustodyForm()">＋ تسليم عهدة</button>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>قائمة العهد الحالية</h3><span class="count" id="count-custody">0 عهدة</span></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>الجهاز</th><th>المكتب/القسم</th><th></th></tr></thead>
+          <tbody id="tbody-custody"></tbody>
         </table>
         </div>
       </div>
@@ -611,6 +632,18 @@
   </div>
 </div>
 
+<!-- ===== نموذج تسليم عهدة ===== -->
+<div class="overlay" id="modal-custody">
+  <div class="modal">
+    <div class="modal-head"><h3>📋 تسليم عهدة</h3><button class="close" onclick="closeModal('modal-custody')">✕</button></div>
+    <div class="modal-body">
+      <div><label>الموظف <span class="req">*</span></label><select id="custody-employee"><option value="">اختر الموظف</option></select></div>
+      <div><label>الجهاز <span class="req">*</span></label><select id="custody-device"><option value="">بدون جهاز (استرجاع)</option></select></div>
+    </div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-custody')">إلغاء</button><button class="btn-save" onclick="saveCustody()">موافق</button></div>
+  </div>
+</div>
+
 <!-- ===== نموذج مشترك: السيرفرات / أجهزة الأمان / الأبواب الذكية ===== -->
 <div class="overlay" id="modal-asset">
   <div class="modal">
@@ -713,9 +746,9 @@
 let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[] };
 let currentRole = null;
 let currentAllowedPages = [];
-const ASSIGNABLE_PAGES = ['search','employees','devices','network','servers','security','doors'];
+const ASSIGNABLE_PAGES = ['search','employees','devices','custody','network','servers','security','doors'];
 const PAGE_LABELS = {
-  search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', network:'الشبكات والراوترات',
+  search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', network:'الشبكات والراوترات',
   servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
 };
 const revealedSecure = new Set();
@@ -816,7 +849,7 @@ async function loadAll(){
 }
 
 function renderAll(){
-  renderEmployees(); renderDevices(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
+  renderEmployees(); renderDevices(); renderCustody(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
   renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
@@ -914,9 +947,11 @@ function openHistoryModal(table, id){
   const rec = DATA[table].find(x=>x.id===id);
   const body = document.getElementById('history-body');
   const history = (rec && rec.history) || [];
-  let html = `<div style="margin-bottom:10px; color:var(--muted); font-size:13px;">جهاز: <b style="color:var(--text)">${escapeHtml(rec?rec.name:'')}</b></div>`;
+  const label = rec ? (rec.name || rec.code || '') : '';
+  const currentHolder = rec ? (rec.custodian || rec.user || '') : '';
+  let html = `<div style="margin-bottom:10px; color:var(--muted); font-size:13px;">جهاز: <b style="color:var(--text)">${escapeHtml(label)}</b></div>`;
   html += `<div style="margin-bottom:10px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; font-size:13.5px;">
-    <span style="color:var(--muted);">المسؤول الحالي:</span> ${escapeHtml(rec&&rec.custodian ? rec.custodian : 'بدون مسؤول')}
+    <span style="color:var(--muted);">المسؤول الحالي:</span> ${escapeHtml(currentHolder || 'بدون مسؤول')}
   </div>`;
   if(history.length===0){
     html += `<div style="color:var(--muted); font-size:13px;">لا يوجد سجل عهدة سابق لهذا الجهاز.</div>`;
@@ -1065,6 +1100,92 @@ function renderDevices(){
   }
   tbody.innerHTML = list.map(deviceRowHtml).join('');
 }
+
+/* ============ العهد: تسليم/استرجاع جهاز لموظف ============ */
+function renderCustody(){
+  const tbody = document.getElementById('tbody-custody');
+  const holders = DATA.employees.filter(e=>e.device);
+  document.getElementById('count-custody').textContent = holders.length + ' عهدة';
+  if(holders.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">ما فيه عهد حالية — اضغط "＋ تسليم عهدة"</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = holders.map(e=>{
+    const device = DATA.devices.find(d=>d.code===e.device);
+    return `
+    <tr>
+      <td>${escapeHtml(e.name)}</td>
+      <td class="mono">${escapeHtml(e.device)}</td>
+      <td>${escapeHtml(e.office)||'—'}</td>
+      <td><div class="row-actions">
+        ${device ? `<button class="icon-btn" onclick="openHistoryModal('devices','${device.id}')" title="سجل العهدة">📜</button>` : ''}
+        <button class="icon-btn" onclick="openCustodyForm('${e.id}')" title="تعديل">✎</button>
+        <button class="icon-btn" onclick="releaseCustody('${e.id}')" title="استرجاع">↩</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function fillCustodyEmployeeOptions(currentEmployeeId){
+  const sel = document.getElementById('custody-employee');
+  sel.innerHTML = '<option value="">اختر الموظف</option>' +
+    DATA.employees.map(e=>`<option value="${e.id}" ${e.id===currentEmployeeId?'selected':''}>${escapeHtml(e.name)}</option>`).join('');
+}
+
+function fillCustodyDeviceOptions(currentEmployeeId){
+  const sel = document.getElementById('custody-device');
+  const currentCode = currentEmployeeId ? (DATA.employees.find(e=>e.id===currentEmployeeId)||{}).device : '';
+  const ownerByDevice = {};
+  DATA.employees.forEach(e=>{ if(e.device && e.id!==currentEmployeeId) ownerByDevice[e.device] = e.name; });
+  sel.innerHTML = '<option value="">بدون جهاز (استرجاع)</option>' +
+    DATA.devices.map(d=>{
+      const owner = ownerByDevice[d.code];
+      const label = owner ? `${d.code} — بعهدة ${owner}` : d.code;
+      return `<option value="${d.id}" ${d.code===currentCode?'selected':''} ${owner?'disabled':''}>${escapeHtml(label)}</option>`;
+    }).join('');
+}
+
+function openCustodyForm(employeeId){
+  fillCustodyEmployeeOptions(employeeId || '');
+  fillCustodyDeviceOptions(employeeId || '');
+  openModal('modal-custody');
+}
+
+async function saveCustody(){
+  const employeeId = document.getElementById('custody-employee').value;
+  if(!employeeId){ showToast('⚠ اختر الموظف'); return; }
+  const deviceId = document.getElementById('custody-device').value;
+
+  try{
+    const res = await fetch('/api/custody/assign', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ employeeId, deviceId: deviceId || null }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر تنفيذ العملية');
+      return;
+    }
+    closeModal('modal-custody'); await loadAll(); showToast('تم تسليم العهدة');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+}
+
+async function releaseCustody(employeeId){
+  if(!confirm('هل تريد استرجاع الجهاز من هذا الموظف؟')) return;
+  try{
+    const res = await fetch('/api/custody/assign', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ employeeId, deviceId: null }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر الاسترجاع');
+      return;
+    }
+    await loadAll(); showToast('تم استرجاع الجهاز');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+}
+document.getElementById('custody-employee').addEventListener('change', (e)=> fillCustodyDeviceOptions(e.target.value));
 
 /* ============ عرض: السويتشات ============ */
 function renderSwitches(){
