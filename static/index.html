@@ -198,6 +198,7 @@
       <div class="nav-item" data-page="security"><span class="ic">06</span> أجهزة الأمان</div>
       <div class="nav-item" data-page="doors"><span class="ic">07</span> الأبواب الذكية</div>
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
+      <div class="nav-item locked" data-page="users" id="nav-users"><span class="ic">👤</span> إدارة المستخدمين</div>
     </nav>
 
     <div class="sidebar-foot" id="logout-btn">↩ تسجيل الخروج</div>
@@ -413,6 +414,26 @@
         </div>
       </div>
     </section>
+
+    <section class="page" id="users">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">👤 وصول مقيّد</div>
+          <h2>إدارة المستخدمين</h2>
+          <p>تحكّم بمن يقدر يدخل النظام، ودوره، وأي تبويبات يشوفها. هذا التبويب مخصص لمسؤول النظام فقط.</p>
+        </div>
+        <button class="btn-add" onclick="openUserForm()">＋ إضافة مستخدم</button>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>الحسابات</h3><span class="count" id="count-users">0 حساب</span></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>اسم المستخدم</th><th>الصلاحية</th><th>التبويبات المتاحة</th><th></th></tr></thead>
+          <tbody id="tbody-users"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -566,6 +587,29 @@
   </div>
 </div>
 
+<!-- ===== نموذج إضافة/تعديل مستخدم ===== -->
+<div class="overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-head"><h3 id="user-modal-title">＋ إضافة مستخدم</h3><button class="close" onclick="closeModal('modal-user')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="user-original-username">
+      <div><label>اسم المستخدم <span class="req">*</span></label><input id="user-username" placeholder="مثال: k.mutairi"></div>
+      <div><label>كلمة المرور <span id="user-pass-req"></span></label><input type="password" id="user-password" placeholder="اتركه فاضي للإبقاء على نفس كلمة المرور"></div>
+      <div><label>الصلاحية</label>
+        <select id="user-role">
+          <option value="user">مستخدم عادي (حسب التبويبات المحددة أدناه)</option>
+          <option value="admin">مسؤول النظام (يشوف كل شي، بما فيه القسم الآمن وإدارة المستخدمين)</option>
+        </select>
+      </div>
+      <div id="user-pages-wrap">
+        <label>التبويبات المتاحة لهذا المستخدم</label>
+        <div id="user-pages-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-user')">إلغاء</button><button class="btn-save" onclick="saveUser()">حفظ المستخدم</button></div>
+  </div>
+</div>
+
 <!-- ===== نموذج مشترك: السيرفرات / أجهزة الأمان / الأبواب الذكية ===== -->
 <div class="overlay" id="modal-asset">
   <div class="modal">
@@ -665,8 +709,14 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[] };
 let currentRole = null;
+let currentAllowedPages = [];
+const ASSIGNABLE_PAGES = ['search','employees','devices','network','servers','security','doors'];
+const PAGE_LABELS = {
+  search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', network:'الشبكات والراوترات',
+  servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
+};
 const revealedSecure = new Set();
 const revealedEmpFields = new Set();
 
@@ -712,22 +762,28 @@ async function apiSave(table, record){
 async function apiDelete(table, id){
   try{
     const res = await fetch('/api/'+table+'/'+id, { method:'DELETE', credentials:'same-origin' });
-    return res.ok;
-  }catch(e){ return false; }
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر الحذف');
+      return false;
+    }
+    return true;
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); return false; }
 }
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, secure, users] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
     apiGet('servers'), apiGet('security'), apiGet('doors'),
-    currentRole==='admin' ? apiGet('secure') : Promise.resolve([])
+    currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
+    currentRole==='admin' ? apiGet('users') : Promise.resolve([])
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure };
+  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users };
   renderAll();
 }
 
 function renderAll(){
-  renderEmployees(); renderDevices(); renderSwitches(); renderRouters(); renderSecure(); renderStats();
+  renderEmployees(); renderDevices(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
   renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
@@ -1049,11 +1105,96 @@ function toggleSecure(id){
   renderSecure();
 }
 
+/* ============ عرض/إدارة: المستخدمون ============ */
+function renderUsers(){
+  const tbody = document.getElementById('tbody-users');
+  document.getElementById('count-users').textContent = DATA.users.length + ' حساب';
+  if(DATA.users.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">لا توجد حسابات بعد</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DATA.users.map(u=>{
+    const pagesText = u.role==='admin' ? 'كل التبويبات' : (u.allowedPages.map(p=>PAGE_LABELS[p]||p).join('، ') || 'بدون تبويبات');
+    return `
+    <tr>
+      <td class="mono">${escapeHtml(u.username)}</td>
+      <td><span class="badge ${u.role==='admin'?'ok':'warn'}"><span class="dot"></span>${u.role==='admin'?'مسؤول النظام':'مستخدم عادي'}</span></td>
+      <td>${escapeHtml(pagesText)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="openUserForm('${escapeHtml(u.username)}')">✎</button>
+        <button class="icon-btn" onclick="deleteUser('${escapeHtml(u.username)}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderUserPagesList(selectedPages){
+  const wrap = document.getElementById('user-pages-list');
+  wrap.innerHTML = ASSIGNABLE_PAGES.map(p=>`
+    <label class="license-check" id="user-page-${p}-wrap">
+      <input type="checkbox" class="user-page-check" value="${p}" data-name="${escapeHtml(PAGE_LABELS[p])}" ${selectedPages.includes(p)?'checked':''}>
+      <span>${escapeHtml(PAGE_LABELS[p])}${selectedPages.includes(p)?' — ✓ منشط':''}</span>
+    </label>`).join('');
+  wrap.querySelectorAll('.user-page-check').forEach(chk=>{
+    chk.closest('.license-check').classList.toggle('on', chk.checked);
+    chk.addEventListener('change', ()=>{
+      const w = chk.closest('.license-check');
+      w.classList.toggle('on', chk.checked);
+      w.querySelector('span').textContent = chk.dataset.name + (chk.checked ? ' — ✓ منشط' : '');
+    });
+  });
+}
+
+function toggleUserPagesVisibility(){
+  const isAdmin = document.getElementById('user-role').value === 'admin';
+  document.getElementById('user-pages-wrap').style.display = isAdmin ? 'none' : 'block';
+}
+document.getElementById('user-role').addEventListener('change', toggleUserPagesVisibility);
+
+function openUserForm(username){
+  const u = username ? DATA.users.find(x=>x.username===username) : null;
+  document.getElementById('user-modal-title').textContent = u ? '✎ تعديل مستخدم' : '＋ إضافة مستخدم';
+  document.getElementById('user-original-username').value = u ? u.username : '';
+  document.getElementById('user-username').value = u ? u.username : '';
+  document.getElementById('user-username').disabled = !!u;
+  document.getElementById('user-password').value = '';
+  document.getElementById('user-pass-req').textContent = u ? '' : '*';
+  document.getElementById('user-pass-req').className = u ? '' : 'req';
+  document.getElementById('user-role').value = u ? u.role : 'user';
+  renderUserPagesList(u ? u.allowedPages : []);
+  toggleUserPagesVisibility();
+  openModal('modal-user');
+}
+
+async function saveUser(){
+  const originalUsername = document.getElementById('user-original-username').value;
+  const username = document.getElementById('user-username').value.trim();
+  if(!username){ showToast('⚠ اسم المستخدم إجباري'); return; }
+  const password = document.getElementById('user-password').value;
+  if(!originalUsername && !password){ showToast('⚠ كلمة المرور إجبارية عند إنشاء حساب جديد'); return; }
+  const role = document.getElementById('user-role').value;
+  const allowedPages = Array.from(document.querySelectorAll('.user-page-check:checked')).map(c=>c.value);
+
+  const record = { username, password, role, allowedPages };
+  const saved = await apiSave('users', record);
+  if(!saved) return;
+  closeModal('modal-user'); await loadAll(); showToast('تم حفظ المستخدم');
+}
+
+async function deleteUser(username){
+  if(!confirm(`هل تريد حذف المستخدم "${username}"؟`)) return;
+  const ok = await apiDelete('users', username);
+  if(!ok) return;
+  DATA.users = DATA.users.filter(u=>u.username!==username);
+  renderUsers();
+  showToast('تم الحذف');
+}
+
 /* ============ حذف عام ============ */
 async function deleteRecord(type, id){
   if(!confirm('هل تريد حذف هذا السجل؟')) return;
   const ok = await apiDelete(type, id);
-  if(!ok){ showToast('⚠ تعذّر الحذف'); return; }
+  if(!ok) return;
   DATA[type] = DATA[type].filter(r=>r.id!==id);
   renderAll();
   showToast('تم الحذف');
@@ -1377,12 +1518,18 @@ document.querySelectorAll('.license-check input').forEach(chk=>{
 });
 
 /* ============ تسجيل الدخول ============ */
-async function applyRoleUI(role){
+async function applyRoleUI(role, allowedPages){
   currentRole = role;
+  currentAllowedPages = role==='admin' ? ASSIGNABLE_PAGES : (allowedPages || []);
   const roleLabel = role==='admin' ? 'مسؤول النظام' : 'مستخدم عادي';
   document.getElementById('role-badge').textContent = '● ' + roleLabel;
   document.getElementById('dash-role').textContent = roleLabel;
   document.getElementById('nav-secure').classList.toggle('locked', role!=='admin');
+  document.getElementById('nav-users').classList.toggle('locked', role!=='admin');
+  ASSIGNABLE_PAGES.forEach(p=>{
+    const item = document.querySelector(`.nav-item[data-page="${p}"]`);
+    if(item) item.classList.toggle('locked', !currentAllowedPages.includes(p));
+  });
 }
 
 document.getElementById('btn-login').addEventListener('click', async ()=>{
@@ -1399,7 +1546,7 @@ document.getElementById('btn-login').addEventListener('click', async ()=>{
     document.getElementById('login-error').style.display='none';
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').classList.add('show');
-    await applyRoleUI(data.role);
+    await applyRoleUI(data.role, data.allowedPages);
     await loadAll();
   }catch(e){
     document.getElementById('login-error').textContent = 'تعذّر الاتصال بالسيرفر — تأكد إنك على نفس الشبكة.';
@@ -1423,7 +1570,7 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
     if(data.loggedIn){
       document.getElementById('login-screen').style.display='none';
       document.getElementById('app').classList.add('show');
-      await applyRoleUI(data.role);
+      await applyRoleUI(data.role, data.allowedPages);
       await loadAll();
     }
   }catch(e){ /* السيرفر غير متاح بعد، يبقى بشاشة الدخول */ }

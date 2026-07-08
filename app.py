@@ -7,9 +7,10 @@
 - البيانات تُخزّن في ملفات JSON داخل مجلد data/ على نفس الجهاز — لا إنترنت، لا خدمات خارجية.
 
 قبل التشغيل:
-1) عدّل كلمتي المرور بالأسفل (ACCOUNTS) لكلمات مرورك الفعلية.
-2) شغّل: pip install flask
-3) شغّل: python app.py
+1) شغّل: pip install flask
+2) شغّل: python app.py
+3) أول تشغيل ينشئ حساب "administrator" مؤقت بكلمة مرور CHANGE_ME_ADMIN_PASSWORD —
+   سجّل دخول فيه وغيّر كلمة المرور فورًا من تبويب "إدارة المستخدمين" داخل النظام.
 4) اعرف عنوان IP لهذا الجهاز على الشبكة (راجع ملف التعليمات المرفق)
 5) شارك الرابط: http://<عنوان-IP-لهذا-الجهاز>:5000 مع الموظفين على نفس الشبكة
 """
@@ -43,32 +44,44 @@ else:
     app.secret_key = key
 
 # ------------------------------------------------------------------
-# ⚠️ كلمتا المرور تُقرآن من accounts.json (ملف محلي على هذا الجهاز فقط،
-# غير مرفوع لأي مستودع). عدّل كلمتي المرور من ذاك الملف مباشرة.
-# أول تشغيل على جهاز جديد ينشئ الملف تلقائيًا بكلمتي مرور مؤقتة (CHANGE_ME)
-# لازم تغييرها فورًا.
+# الحسابات — تُدار من تبويب "إدارة المستخدمين" داخل النظام نفسه
+# (مسؤول النظام فقط). تُخزَّن في accounts.json محليًا على هذا الجهاز
+# فقط (غير مرفوع لأي مستودع). أول تشغيل على جهاز جديد ينشئ حساب
+# administrator مؤقت بكلمة مرور CHANGE_ME_ADMIN_PASSWORD لازم تغييرها فورًا.
 # ------------------------------------------------------------------
 ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
+
+# التبويبات القابلة للتخصيص لحسابات "مستخدم عادي" — لوحة المعلومات دايمًا
+# متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
+ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'network', 'servers', 'security', 'doors']
+
 DEFAULT_ACCOUNTS = {
-    'administrator': {'password': 'CHANGE_ME_ADMIN_PASSWORD', 'role': 'admin'},
-    'admin': {'password': 'CHANGE_ME_USER_PASSWORD', 'role': 'user'},
+    'administrator': {
+        'password_hash': generate_password_hash('CHANGE_ME_ADMIN_PASSWORD'),
+        'role': 'admin',
+        'allowedPages': [],
+    },
 }
 
-if os.path.exists(ACCOUNTS_FILE):
+
+def load_accounts():
+    if not os.path.exists(ACCOUNTS_FILE):
+        save_accounts(DEFAULT_ACCOUNTS)
+        return dict(DEFAULT_ACCOUNTS)
     with open(ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
-        raw_accounts = json.load(f)
-else:
-    raw_accounts = DEFAULT_ACCOUNTS
-    with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(raw_accounts, f, ensure_ascii=False, indent=2)
+        return json.load(f)
 
-ACCOUNTS = {
-    username: {
-        'password_hash': generate_password_hash(info['password']),
-        'role': info['role'],
-    }
-    for username, info in raw_accounts.items()
-}
+
+def save_accounts(accounts):
+    tmp_path = ACCOUNTS_FILE + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(accounts, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, ACCOUNTS_FILE)
+
+
+def allowed_pages_for(account):
+    return ASSIGNABLE_PAGES if account['role'] == 'admin' else account.get('allowedPages', [])
+
 
 TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure']
 ADMIN_ONLY_TABLES = {'secure'}
@@ -114,13 +127,14 @@ def login():
     username = (body.get('username') or '').strip()
     password = body.get('password') or ''
 
-    account = ACCOUNTS.get(username)
+    accounts = load_accounts()
+    account = accounts.get(username)
     if not account or not check_password_hash(account['password_hash'], password):
         return jsonify({'error': 'بيانات الدخول غير صحيحة'}), 401
 
     session['username'] = username
     session['role'] = account['role']
-    return jsonify({'username': username, 'role': account['role']})
+    return jsonify({'username': username, 'role': account['role'], 'allowedPages': allowed_pages_for(account)})
 
 
 @app.route('/api/logout', methods=['POST'])
@@ -133,7 +147,17 @@ def logout():
 def get_session():
     if not is_logged_in():
         return jsonify({'loggedIn': False})
-    return jsonify({'loggedIn': True, 'username': session['username'], 'role': session['role']})
+    accounts = load_accounts()
+    account = accounts.get(session['username'])
+    if not account:
+        session.clear()
+        return jsonify({'loggedIn': False})
+    return jsonify({
+        'loggedIn': True,
+        'username': session['username'],
+        'role': session['role'],
+        'allowedPages': allowed_pages_for(account),
+    })
 
 
 # ------------------------------------------------------------------
@@ -151,6 +175,79 @@ def require_admin():
     if current_role() != 'admin':
         return jsonify({'error': 'هذا القسم مخصص لمسؤول النظام فقط'}), 403
     return None
+
+
+# ------------------------------------------------------------------
+# إدارة المستخدمين (مسؤول النظام فقط)
+# ------------------------------------------------------------------
+@app.route('/api/users', methods=['GET'])
+def list_users():
+    err = require_admin()
+    if err:
+        return err
+    accounts = load_accounts()
+    return jsonify([
+        {'username': u, 'role': a['role'], 'allowedPages': a.get('allowedPages', [])}
+        for u, a in accounts.items()
+    ])
+
+
+@app.route('/api/users', methods=['POST'])
+def upsert_user():
+    err = require_admin()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    username = (body.get('username') or '').strip()
+    if not username:
+        return jsonify({'error': 'اسم المستخدم إجباري'}), 400
+
+    password = body.get('password') or ''
+    role = 'admin' if body.get('role') == 'admin' else 'user'
+    allowed_pages = [p for p in (body.get('allowedPages') or []) if p in ASSIGNABLE_PAGES]
+
+    accounts = load_accounts()
+    existing = accounts.get(username)
+
+    if not password and not existing:
+        return jsonify({'error': 'كلمة المرور إجبارية عند إنشاء حساب جديد'}), 400
+
+    password_hash = generate_password_hash(password) if password else existing['password_hash']
+
+    accounts[username] = {
+        'password_hash': password_hash,
+        'role': role,
+        'allowedPages': allowed_pages,
+    }
+    save_accounts(accounts)
+
+    if session.get('username') == username:
+        session['role'] = role
+
+    return jsonify({'username': username, 'role': role, 'allowedPages': allowed_pages})
+
+
+@app.route('/api/users/<username>', methods=['DELETE'])
+def delete_user(username):
+    err = require_admin()
+    if err:
+        return err
+
+    accounts = load_accounts()
+    if username not in accounts:
+        return jsonify({'error': 'المستخدم غير موجود'}), 404
+
+    if username == session.get('username'):
+        return jsonify({'error': 'لا يمكنك حذف حسابك الحالي وأنت مسجّل دخول فيه'}), 400
+
+    remaining_admins = [u for u, a in accounts.items() if a['role'] == 'admin' and u != username]
+    if accounts[username]['role'] == 'admin' and not remaining_admins:
+        return jsonify({'error': 'لازم يبقى مسؤول نظام واحد على الأقل'}), 400
+
+    del accounts[username]
+    save_accounts(accounts)
+    return jsonify({'success': True})
 
 
 @app.route('/api/<table>', methods=['GET'])
