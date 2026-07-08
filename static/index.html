@@ -194,6 +194,7 @@
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
       <div class="nav-item" data-page="devices"><span class="ic">03</span> أجهزة الكمبيوتر</div>
       <div class="nav-item" data-page="custody"><span class="ic">📋</span> العهد</div>
+      <div class="nav-item" data-page="stock"><span class="ic">📦</span> المخزون</div>
       <div class="nav-item" data-page="network"><span class="ic">04</span> الشبكات والراوترات</div>
       <div class="nav-item" data-page="servers"><span class="ic">05</span> السيرفرات</div>
       <div class="nav-item" data-page="security"><span class="ic">06</span> أجهزة الأمان</div>
@@ -318,6 +319,29 @@
         <table>
           <thead><tr><th>الموظف</th><th>الجهاز</th><th>المكتب/القسم</th><th></th></tr></thead>
           <tbody id="tbody-custody"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="stock">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">📦 المخزون</div>
+          <h2>المخزون</h2>
+          <p>الكمية الحالية لكل صنف تُحسب تلقائيًا من سجل الحركة (وارد وصادر) — ما تُعدَّل مباشرة.</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn-ghost" onclick="openStockTxnForm()">↔ تسجيل حركة</button>
+          <button class="btn-add" onclick="openStockItemForm()">＋ إضافة صنف</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>أصناف المخزون</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-stock">0 صنف</span><button class="icon-btn" onclick="exportTable('stock_items')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('stock_items')" title="استيراد Excel">⬆</button></div></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>اسم الصنف</th><th>التصنيف</th><th>الكمية الحالية</th><th>الوحدة</th><th>الحد الأدنى</th><th>الحالة</th><th></th></tr></thead>
+          <tbody id="tbody-stock"></tbody>
         </table>
         </div>
       </div>
@@ -644,6 +668,49 @@
   </div>
 </div>
 
+<!-- ===== نموذج إضافة/تعديل صنف مخزون ===== -->
+<div class="overlay" id="modal-stockitem">
+  <div class="modal">
+    <div class="modal-head"><h3 id="stockitem-modal-title">＋ إضافة صنف</h3><button class="close" onclick="closeModal('modal-stockitem')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="stockitem-id">
+      <div><label>اسم الصنف <span class="req">*</span></label><input id="stockitem-name" placeholder="مثال: ماوس لاسلكي"></div>
+      <div><label>التصنيف (اختياري)</label><input id="stockitem-category" placeholder="مثال: ملحقات"></div>
+      <div><label>وحدة القياس</label><input id="stockitem-unit" placeholder="مثال: قطعة" value="قطعة"></div>
+      <div><label>الحد الأدنى للتنبيه</label><input id="stockitem-min" placeholder="مثال: 5"></div>
+      <div><label>ملاحظات (اختياري)</label><input id="stockitem-notes" placeholder="أي ملاحظة"></div>
+    </div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stockitem')">إلغاء</button><button class="btn-save" onclick="saveStockItem()">حفظ الصنف</button></div>
+  </div>
+</div>
+
+<!-- ===== نموذج تسجيل حركة مخزون ===== -->
+<div class="overlay" id="modal-stocktxn">
+  <div class="modal">
+    <div class="modal-head"><h3>↔ تسجيل حركة مخزون</h3><button class="close" onclick="closeModal('modal-stocktxn')">✕</button></div>
+    <div class="modal-body">
+      <div><label>الصنف <span class="req">*</span></label><select id="stocktxn-item"><option value="">اختر الصنف</option></select></div>
+      <div><label>نوع الحركة</label>
+        <select id="stocktxn-type"><option value="وارد">وارد (إضافة للمخزون)</option><option value="صادر">صادر (صرف من المخزون)</option></select>
+      </div>
+      <div><label>الكمية <span class="req">*</span></label><input id="stocktxn-quantity" placeholder="مثال: 10"></div>
+      <div><label>التاريخ</label><input type="date" id="stocktxn-date"></div>
+      <div><label>من / إلى (اختياري)</label><input id="stocktxn-party" placeholder="اسم المورد أو الموظف المستلم"></div>
+      <div><label>ملاحظات (اختياري)</label><input id="stocktxn-notes" placeholder="أي ملاحظة"></div>
+    </div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stocktxn')">إلغاء</button><button class="btn-save" onclick="saveStockTxn()">حفظ الحركة</button></div>
+  </div>
+</div>
+
+<!-- ===== نافذة سجل حركة صنف ===== -->
+<div class="overlay" id="modal-stockhistory">
+  <div class="modal">
+    <div class="modal-head"><h3 id="stockhistory-title">📜 سجل الحركة</h3><button class="close" onclick="closeModal('modal-stockhistory')">✕</button></div>
+    <div class="modal-body" id="stockhistory-body"></div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stockhistory')">إغلاق</button></div>
+  </div>
+</div>
+
 <!-- ===== نموذج مشترك: السيرفرات / أجهزة الأمان / الأبواب الذكية ===== -->
 <div class="overlay" id="modal-asset">
   <div class="modal">
@@ -743,12 +810,12 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], stock_items:[], stock_transactions:[] };
 let currentRole = null;
 let currentAllowedPages = [];
-const ASSIGNABLE_PAGES = ['search','employees','devices','custody','network','servers','security','doors'];
+const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors'];
 const PAGE_LABELS = {
-  search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', network:'الشبكات والراوترات',
+  search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', stock:'المخزون', network:'الشبكات والراوترات',
   servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
 };
 const revealedSecure = new Set();
@@ -841,18 +908,19 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 });
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure, users] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, secure, users, stock_items, stock_transactions] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
     apiGet('servers'), apiGet('security'), apiGet('doors'),
     currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
-    currentRole==='admin' ? apiGet('users') : Promise.resolve([])
+    currentRole==='admin' ? apiGet('users') : Promise.resolve([]),
+    apiGet('stock_items'), apiGet('stock_transactions')
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users };
+  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, stock_items, stock_transactions };
   renderAll();
 }
 
 function renderAll(){
-  renderEmployees(); renderDevices(); renderCustody(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
+  renderEmployees(); renderDevices(); renderCustody(); renderStock(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
   renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
@@ -1192,6 +1260,133 @@ async function releaseCustody(employeeId){
   }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
 }
 document.getElementById('custody-employee').addEventListener('change', (e)=> fillCustodyDeviceOptions(e.target.value));
+
+/* ============ المخزون: أصناف وحركة (وارد/صادر) ============ */
+function stockQuantity(itemName){
+  return DATA.stock_transactions
+    .filter(t=>t.item===itemName)
+    .reduce((sum,t)=> sum + (t.type==='وارد' ? Number(t.quantity)||0 : -(Number(t.quantity)||0)), 0);
+}
+
+function renderStock(){
+  const tbody = document.getElementById('tbody-stock');
+  document.getElementById('count-stock').textContent = DATA.stock_items.length + ' صنف';
+  if(DATA.stock_items.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد أصناف بعد — اضغط "＋ إضافة صنف"</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DATA.stock_items.map(item=>{
+    const qty = stockQuantity(item.name);
+    const min = Number(item.minThreshold)||0;
+    const low = min>0 && qty<=min;
+    const statusBadgeHtml = low
+      ? `<span class="badge off"><span class="dot"></span>منخفض</span>`
+      : `<span class="badge ok"><span class="dot"></span>متوفر</span>`;
+    return `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.category)||'—'}</td>
+      <td class="mono">${qty}</td>
+      <td>${escapeHtml(item.unit)||'—'}</td>
+      <td class="mono">${min||'—'}</td>
+      <td>${statusBadgeHtml}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="openStockHistory('${escapeHtml(item.name)}')" title="سجل الحركة">📜</button>
+        <button class="icon-btn" onclick="openStockTxnForm('${escapeHtml(item.name)}')" title="تسجيل حركة">↔</button>
+        <button class="icon-btn" onclick="openStockItemForm('${item.id}')">✎</button>
+        <button class="icon-btn" onclick="deleteRecord('stock_items','${item.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function fillStockItemOptions(currentValue){
+  const sel = document.getElementById('stocktxn-item');
+  sel.innerHTML = '<option value="">اختر الصنف</option>' +
+    DATA.stock_items.map(i=>`<option value="${escapeHtml(i.name)}" ${i.name===currentValue?'selected':''}>${escapeHtml(i.name)}</option>`).join('');
+}
+
+function openStockItemForm(id){
+  const item = id ? DATA.stock_items.find(x=>x.id===id) : null;
+  document.getElementById('stockitem-modal-title').textContent = item ? '✎ تعديل صنف' : '＋ إضافة صنف';
+  document.getElementById('stockitem-id').value = item ? item.id : '';
+  document.getElementById('stockitem-name').value = item ? item.name : '';
+  document.getElementById('stockitem-category').value = item ? (item.category||'') : '';
+  document.getElementById('stockitem-unit').value = item ? (item.unit||'') : 'قطعة';
+  document.getElementById('stockitem-min').value = item ? (item.minThreshold||'') : '';
+  document.getElementById('stockitem-notes').value = item ? (item.notes||'') : '';
+  openModal('modal-stockitem');
+}
+
+async function saveStockItem(){
+  const name = document.getElementById('stockitem-name').value.trim();
+  if(!name){ showToast('⚠ اسم الصنف إجباري'); return; }
+  const record = {
+    id: document.getElementById('stockitem-id').value || undefined,
+    name,
+    category: document.getElementById('stockitem-category').value.trim(),
+    unit: document.getElementById('stockitem-unit').value.trim(),
+    minThreshold: document.getElementById('stockitem-min').value.trim(),
+    notes: document.getElementById('stockitem-notes').value.trim(),
+  };
+  const saved = await apiSave('stock_items', record);
+  if(!saved) return;
+  closeModal('modal-stockitem'); await loadAll(); showToast('تم حفظ الصنف');
+}
+
+function openStockTxnForm(itemName){
+  fillStockItemOptions(itemName || '');
+  document.getElementById('stocktxn-type').value = 'وارد';
+  document.getElementById('stocktxn-quantity').value = '';
+  document.getElementById('stocktxn-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('stocktxn-party').value = '';
+  document.getElementById('stocktxn-notes').value = '';
+  openModal('modal-stocktxn');
+}
+
+async function saveStockTxn(){
+  const item = document.getElementById('stocktxn-item').value;
+  if(!item){ showToast('⚠ اختر الصنف'); return; }
+  const quantity = Number(document.getElementById('stocktxn-quantity').value);
+  if(!quantity || quantity<=0){ showToast('⚠ اكتب كمية صحيحة'); return; }
+  const record = {
+    item,
+    type: document.getElementById('stocktxn-type').value,
+    quantity,
+    date: document.getElementById('stocktxn-date').value || new Date().toISOString().slice(0,10),
+    party: document.getElementById('stocktxn-party').value.trim(),
+    notes: document.getElementById('stocktxn-notes').value.trim(),
+  };
+  const saved = await apiSave('stock_transactions', record);
+  if(!saved) return;
+  closeModal('modal-stocktxn'); await loadAll(); showToast('تم تسجيل الحركة');
+}
+
+function openStockHistory(itemName){
+  document.getElementById('stockhistory-title').textContent = '📜 سجل حركة: ' + itemName;
+  const txns = DATA.stock_transactions.filter(t=>t.item===itemName).slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  const body = document.getElementById('stockhistory-body');
+  let html = `<div style="margin-bottom:10px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; font-size:13.5px;">
+    <span style="color:var(--muted);">الكمية الحالية:</span> <b>${stockQuantity(itemName)}</b>
+  </div>`;
+  if(txns.length===0){
+    html += `<div style="color:var(--muted); font-size:13px;">لا توجد حركة مسجّلة لهذا الصنف.</div>`;
+  } else {
+    html += `<div style="display:flex; flex-direction:column; gap:8px;">` +
+      txns.map(t=>`
+        <div style="padding:9px 12px; background:var(--bg); border:1px solid var(--line); border-radius:7px; font-size:13px;">
+          <div style="display:flex; justify-content:space-between;">
+            <span class="badge ${t.type==='وارد'?'ok':'warn'}"><span class="dot"></span>${escapeHtml(t.type)} — ${escapeHtml(t.quantity)}</span>
+            <span class="mono" style="color:var(--muted);">${escapeHtml(t.date)||'—'}</span>
+          </div>
+          ${t.party ? `<div style="margin-top:6px; color:var(--muted);">من/إلى: ${escapeHtml(t.party)}</div>` : ''}
+          ${t.notes ? `<div style="margin-top:4px; color:var(--muted);">${escapeHtml(t.notes)}</div>` : ''}
+        </div>`).join('') +
+      `</div>`;
+  }
+  body.innerHTML = html;
+  openModal('modal-stockhistory');
+}
 
 /* ============ عرض: السويتشات ============ */
 function renderSwitches(){

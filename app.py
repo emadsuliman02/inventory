@@ -60,7 +60,7 @@ ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
 
 # التبويبات القابلة للتخصيص لحسابات "مستخدم عادي" — لوحة المعلومات دايمًا
 # متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
-ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'custody', 'network', 'servers', 'security', 'doors']
+ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors']
 
 DEFAULT_ACCOUNTS = {
     'administrator': {
@@ -90,7 +90,7 @@ def allowed_pages_for(account):
     return ASSIGNABLE_PAGES if account['role'] == 'admin' else account.get('allowedPages', [])
 
 
-TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure']
+TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'stock_items', 'stock_transactions']
 ADMIN_ONLY_TABLES = {'secure'}
 
 # ------------------------------------------------------------------
@@ -129,6 +129,14 @@ TABLE_SCHEMAS = {
     'doors': ASSET_SCHEMA,
     'secure': [
         ('linked', 'مرتبط بـ'), ('user', 'اسم المستخدم'), ('pass', 'كلمة المرور'), ('notes', 'ملاحظات'),
+    ],
+    'stock_items': [
+        ('name', 'اسم الصنف'), ('category', 'التصنيف'), ('unit', 'وحدة القياس'),
+        ('minThreshold', 'الحد الأدنى للتنبيه'), ('notes', 'ملاحظات'),
+    ],
+    'stock_transactions': [
+        ('item', 'اسم الصنف'), ('type', 'نوع الحركة'), ('quantity', 'الكمية'),
+        ('date', 'التاريخ'), ('party', 'من / إلى'), ('notes', 'ملاحظات'),
     ],
 }
 
