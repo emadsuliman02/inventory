@@ -18,7 +18,10 @@
 from flask import Flask, jsonify, request, session, send_from_directory, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook, load_workbook
+from fpdf import FPDF
 from datetime import date
+import arabic_reshaper
+from bidi.algorithm import get_display
 import io
 import json
 import os
@@ -489,6 +492,223 @@ def assign_custody():
     save_table('employees', employees)
     save_table('devices', devices)
     return jsonify({'success': True, 'employee': employee, 'device': new_device})
+
+
+# ------------------------------------------------------------------
+# تصدير PDF (بطاقة موظف / بطاقة جهاز / إيصال عهدة)
+# ------------------------------------------------------------------
+PDF_FONT_REGULAR = r'C:\Windows\Fonts\tahoma.ttf'
+PDF_FONT_BOLD = r'C:\Windows\Fonts\tahomabd.ttf'
+PDF_LOGO = os.path.join(STATIC_DIR, 'assets', 'icon.png')
+PDF_ACCENT = (0xCE, 0x61, 0x28)
+PDF_TEXT = (0x57, 0x56, 0x50)
+PDF_MUTED = (0x91, 0x86, 0x7D)
+PDF_LINE = (0xE7, 0xDC, 0xCB)
+
+
+def rtl(text):
+    text = '' if text is None else str(text)
+    if not text:
+        return ''
+    return get_display(arabic_reshaper.reshape(text))
+
+
+def new_pdf():
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_font('Body', '', PDF_FONT_REGULAR)
+    pdf.add_font('Body', 'B', PDF_FONT_BOLD)
+    pdf.add_page()
+    pdf.set_margin(18)
+    if os.path.exists(PDF_LOGO):
+        pdf.image(PDF_LOGO, x=178, y=12, w=14)
+    return pdf
+
+
+def pdf_title(pdf, title, subtitle=None):
+    pdf.set_font('Body', 'B', 20)
+    pdf.set_text_color(*PDF_ACCENT)
+    pdf.set_xy(18, 14)
+    pdf.cell(155, 10, rtl(title), align='R')
+    if subtitle:
+        pdf.set_font('Body', '', 11)
+        pdf.set_text_color(*PDF_MUTED)
+        pdf.set_xy(18, 25)
+        pdf.cell(155, 7, rtl(subtitle), align='R')
+    pdf.set_draw_color(*PDF_LINE)
+    pdf.line(18, 34, 192, 34)
+    pdf.set_y(40)
+
+
+def pdf_row(pdf, label, value):
+    # reshape/bidi label and value separately (not the concatenated string) so a
+    # multi-line value wraps in correct reading order and parentheses in labels
+    # like "(CPU)" don't get mirrored by the value's own bidi context.
+    pdf.set_font('Body', '', 12)
+    pdf.set_text_color(*PDF_TEXT)
+    value_text = str(value) if value not in (None, '') else '—'
+    label_visual = rtl(label) + '  :'
+
+    words = value_text.split(' ')
+    lines = []
+    current = ''
+    for word in words:
+        candidate = (current + ' ' + word).strip()
+        probe_width = pdf.get_string_width(rtl(candidate) + '  ' + label_visual)
+        if probe_width <= 174 or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+
+    for i, line in enumerate(lines):
+        pdf.set_x(18)
+        text_visual = (rtl(line) + '  ' + label_visual) if i == 0 else rtl(line)
+        pdf.cell(174, 8, text_visual, align='R')
+        pdf.ln(8)
+    pdf.set_draw_color(*PDF_LINE)
+    pdf.line(18, pdf.get_y(), 192, pdf.get_y())
+    pdf.ln(2)
+
+
+def pdf_paragraph(pdf, text, width=174, line_height=7):
+    words = text.split(' ')
+    lines = []
+    current = ''
+    for word in words:
+        candidate = (current + ' ' + word).strip()
+        if pdf.get_string_width(rtl(candidate)) <= width or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    for line in lines:
+        pdf.set_x(18)
+        pdf.cell(width, line_height, rtl(line), align='R')
+        pdf.ln(line_height)
+
+
+def pdf_section(pdf, title):
+    pdf.ln(3)
+    pdf.set_font('Body', 'B', 13)
+    pdf.set_text_color(*PDF_ACCENT)
+    pdf.set_xy(18, pdf.get_y())
+    pdf.cell(174, 9, rtl(title), align='R')
+    pdf.ln(9)
+
+
+def pdf_response(pdf, filename):
+    buf = io.BytesIO(pdf.output())
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@app.route('/api/employees/<employee_id>/pdf', methods=['GET'])
+def employee_pdf(employee_id):
+    err = require_login()
+    if err:
+        return err
+    employee = next((e for e in load_table('employees') if e.get('id') == employee_id), None)
+    if not employee:
+        return jsonify({'error': 'الموظف غير موجود'}), 404
+
+    pdf = new_pdf()
+    pdf_title(pdf, 'بطاقة بيانات الموظف', 'جمعية الإحسان للخدمات الاجتماعية')
+    pdf_row(pdf, 'الاسم', employee.get('name'))
+    pdf_row(pdf, 'الرقم الوظيفي', employee.get('empId'))
+    pdf_row(pdf, 'المسمى الوظيفي', employee.get('title'))
+    pdf_row(pdf, 'رقم التحويلة', employee.get('ext'))
+    pdf_row(pdf, 'البريد الإلكتروني', employee.get('email'))
+    pdf_row(pdf, 'اسم المستخدم', employee.get('username'))
+    pdf_row(pdf, 'الجهاز المرتبط', employee.get('device'))
+    pdf_row(pdf, 'المكتب / القسم', employee.get('office'))
+    pdf_row(pdf, 'حالة الحساب', employee.get('status'))
+    if employee.get('notes'):
+        pdf_row(pdf, 'ملاحظات', employee.get('notes'))
+    return pdf_response(pdf, f"employee-{employee.get('name') or employee_id}.pdf")
+
+
+@app.route('/api/devices/<device_id>/pdf', methods=['GET'])
+def device_pdf(device_id):
+    err = require_login()
+    if err:
+        return err
+    device = next((d for d in load_table('devices') if d.get('id') == device_id), None)
+    if not device:
+        return jsonify({'error': 'الجهاز غير موجود'}), 404
+
+    mb = device.get('motherboard') or {}
+    pdf = new_pdf()
+    pdf_title(pdf, 'بطاقة بيانات الجهاز', 'جمعية الإحسان للخدمات الاجتماعية')
+    pdf_row(pdf, 'اسم الجهاز', device.get('code'))
+    pdf_row(pdf, 'النوع', device.get('type'))
+    pdf_row(pdf, 'الرقم التسلسلي', device.get('serial'))
+    pdf_row(pdf, 'الحالة', device.get('status'))
+    pdf_row(pdf, 'بعهدة', device.get('user') or 'بدون مستخدم')
+    pdf_row(pdf, 'القسم', device.get('office'))
+    pdf_row(pdf, 'عنوان IP', device.get('ip'))
+    pdf_row(pdf, 'نظام التشغيل', device.get('os'))
+    pdf_row(pdf, 'المعالج (CPU)', device.get('cpu'))
+
+    pdf_section(pdf, 'اللوحة الأم والذاكرة')
+    pdf_row(pdf, 'موديل اللوحة الأم', mb.get('model'))
+    pdf_row(pdf, 'نوع الرام (DDR)', mb.get('ramType'))
+    pdf_row(pdf, 'الرام', device.get('ram'))
+    pdf_row(pdf, 'الهارد ديسك', device.get('storage'))
+
+    pdf_section(pdf, 'الملحقات والتراخيص')
+    pdf_row(pdf, 'الملحقات', '، '.join(device.get('accessories') or []))
+    pdf_row(pdf, 'ترخيص Office', 'فعالة' if device.get('licOffice') else 'غير فعالة')
+    pdf_row(pdf, 'ترخيص Windows', 'فعالة' if device.get('licWindows') else 'غير فعالة')
+    if device.get('notes'):
+        pdf_row(pdf, 'ملاحظات', device.get('notes'))
+    return pdf_response(pdf, f"device-{device.get('code') or device_id}.pdf")
+
+
+@app.route('/api/custody/<employee_id>/pdf', methods=['GET'])
+def custody_pdf(employee_id):
+    err = require_login()
+    if err:
+        return err
+    employee = next((e for e in load_table('employees') if e.get('id') == employee_id), None)
+    if not employee:
+        return jsonify({'error': 'الموظف غير موجود'}), 404
+    device = next((d for d in load_table('devices') if d.get('code') == employee.get('device')), None)
+
+    pdf = new_pdf()
+    pdf_title(pdf, 'إقرار استلام عهدة', 'جمعية الإحسان للخدمات الاجتماعية')
+    pdf_row(pdf, 'الموظف', employee.get('name'))
+    pdf_row(pdf, 'المكتب / القسم', employee.get('office'))
+    pdf_row(pdf, 'تاريخ الإقرار', date.today().isoformat())
+
+    pdf_section(pdf, 'بيانات الجهاز المستلم')
+    if device:
+        pdf_row(pdf, 'اسم الجهاز', device.get('code'))
+        pdf_row(pdf, 'النوع', device.get('type'))
+        pdf_row(pdf, 'الرقم التسلسلي', device.get('serial'))
+        pdf_row(pdf, 'المواصفات', f"{device.get('cpu') or ''} — {device.get('ram') or ''} — {device.get('storage') or ''}")
+    else:
+        pdf_row(pdf, 'الجهاز', 'ما فيه جهاز مرتبط حاليًا بهذا الموظف')
+
+    pdf.ln(14)
+    pdf.set_font('Body', '', 12)
+    pdf.set_text_color(*PDF_TEXT)
+    pdf_paragraph(pdf, 'أقر أنا الموظف المذكور أعلاه باستلام الجهاز الموضّحة بياناته، وأتحمّل المسؤولية الكاملة عن المحافظة عليه.')
+
+    pdf.ln(20)
+    y = pdf.get_y()
+    pdf.set_draw_color(*PDF_LINE)
+    pdf.line(18, y, 78, y)
+    pdf.line(132, y, 192, y)
+    pdf.set_font('Body', '', 11)
+    pdf.set_text_color(*PDF_MUTED)
+    pdf.set_xy(18, y + 2)
+    pdf.cell(60, 7, rtl('توقيع الموظف'), align='R')
+    pdf.set_xy(132, y + 2)
+    pdf.cell(60, 7, rtl('توقيع مسؤول تقنية المعلومات'), align='R')
+
+    return pdf_response(pdf, f"custody-{employee.get('name') or employee_id}.pdf")
 
 
 # ------------------------------------------------------------------

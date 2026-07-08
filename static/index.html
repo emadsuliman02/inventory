@@ -809,6 +809,9 @@ async function apiDelete(table, id){
 function exportTable(table){
   window.location.href = '/api/'+table+'/export';
 }
+function downloadPdf(table, id){
+  window.location.href = '/api/'+table+'/'+id+'/pdf';
+}
 let importTargetTable = null;
 function triggerImport(table){
   importTargetTable = table;
@@ -1015,6 +1018,7 @@ function renderEmployees(){
       <td>${escapeHtml(e.name)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openEmployeeView('${e.id}')" title="عرض">🔎</button>
+        <button class="icon-btn" onclick="downloadPdf('employees','${e.id}')" title="تصدير PDF">📄</button>
         <button class="icon-btn" onclick="openEmployeeForm('${e.id}')">✎</button>
         <button class="icon-btn" onclick="deleteRecord('employees','${e.id}')">🗑</button>
       </div></td>
@@ -1067,6 +1071,7 @@ function deviceRowHtml(d){
       <td>${statusBadge(d.status, DEV_STATUS_MAP)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openDeviceView('${d.id}')" title="عرض">🔎</button>
+        <button class="icon-btn" onclick="downloadPdf('devices','${d.id}')" title="تصدير PDF">📄</button>
         <button class="icon-btn" onclick="openDeviceForm('${d.id}')">✎</button>
         <button class="icon-btn" onclick="deleteRecord('devices','${d.id}')">🗑</button>
       </div></td>
@@ -1119,6 +1124,7 @@ function renderCustody(){
       <td>${escapeHtml(e.office)||'—'}</td>
       <td><div class="row-actions">
         ${device ? `<button class="icon-btn" onclick="openHistoryModal('devices','${device.id}')" title="سجل العهدة">📜</button>` : ''}
+        <button class="icon-btn" onclick="downloadPdf('custody','${e.id}')" title="تصدير PDF">📄</button>
         <button class="icon-btn" onclick="openCustodyForm('${e.id}')" title="تعديل">✎</button>
         <button class="icon-btn" onclick="releaseCustody('${e.id}')" title="استرجاع">↩</button>
       </div></td>

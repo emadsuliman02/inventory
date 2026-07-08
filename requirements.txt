@@ -1,2 +1,5 @@
 flask
 openpyxl
+fpdf2
+arabic-reshaper
+python-bidi
