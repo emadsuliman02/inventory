@@ -1,0 +1,5 @@
+data/
+secret.key
+accounts.json
+__pycache__/
+*.pyc
