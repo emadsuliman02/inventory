@@ -54,13 +54,13 @@
 
   nav{ display:flex; flex-direction:column; gap:4px; }
   .nav-item{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:8px; color:var(--muted); font-size:14.5px; font-weight:500; cursor:pointer; border:1px solid transparent; transition:.15s; }
-  .nav-item .ic{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent); width:20px; }
+  .nav-item .ic{ font-size:15px; width:20px; text-align:center; flex-shrink:0; }
   .nav-item:hover{ background:var(--surface-2); color:var(--text); }
   .nav-item.active{ background:var(--surface-2); color:var(--text); border-color:var(--line); box-shadow: inset 3px 0 0 var(--accent); }
   .nav-item.locked{ display:none; }
   .nav-group{ display:flex; flex-direction:column; }
   .nav-parent{ justify-content:space-between; }
-  .nav-caret{ font-size:11px; transition:.15s; }
+  .nav-caret{ width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--muted); transition:.15s; flex-shrink:0; }
   .nav-parent.open .nav-caret{ transform:rotate(180deg); }
   .nav-sub{ display:none; flex-direction:column; gap:3px; margin:3px 9px 3px 0; padding-right:14px; border-right:2px solid var(--line); }
   .nav-sub.open{ display:flex; }
@@ -196,10 +196,10 @@
     <span class="role-badge" id="role-badge">● مسؤول النظام</span>
 
     <nav>
-      <div class="nav-item active" data-page="dash"><span class="ic">01</span> لوحة المعلومات</div>
+      <div class="nav-item active" data-page="dash"><span class="ic">📊</span> لوحة المعلومات</div>
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-group">
-        <div class="nav-item nav-parent" id="nav-requests-parent"><span class="ic">📨</span> الطلبات <span class="nav-caret">▾</span></div>
+        <div class="nav-item nav-parent" id="nav-requests-parent"><span class="ic">📨</span> الطلبات <span class="nav-caret"></span></div>
         <div class="nav-sub" id="nav-requests-sub">
           <div class="nav-item nav-child" data-page="submitrequest">تقديم طلب</div>
           <div class="nav-item nav-child" data-page="requests">طلبات الإضافة</div>
@@ -207,7 +207,7 @@
         </div>
       </div>
       <div class="nav-group">
-        <div class="nav-item nav-parent" id="nav-assets-parent"><span class="ic">03</span> الأجهزة <span class="nav-caret">▾</span></div>
+        <div class="nav-item nav-parent" id="nav-assets-parent"><span class="ic">💻</span> الأجهزة <span class="nav-caret"></span></div>
         <div class="nav-sub" id="nav-assets-sub">
           <div class="nav-item nav-child" data-page="devices">أجهزة الكمبيوتر</div>
           <div class="nav-item nav-child" data-page="network">السويتشات والراوترات</div>
@@ -216,7 +216,7 @@
           <div class="nav-item nav-child" data-page="doors">الأبواب الذكية</div>
         </div>
       </div>
-      <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
+      <div class="nav-item" data-page="employees"><span class="ic">👥</span> الموظفون</div>
       <div class="nav-item" data-page="custody"><span class="ic">📋</span> العهد</div>
       <div class="nav-item" data-page="stock"><span class="ic">📦</span> المخزون</div>
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
