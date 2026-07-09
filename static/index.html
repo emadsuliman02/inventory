@@ -57,7 +57,7 @@
   .nav-item .ic{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--accent); width:20px; }
   .nav-item:hover{ background:var(--surface-2); color:var(--text); }
   .nav-item.active{ background:var(--surface-2); color:var(--text); border-color:var(--line); box-shadow: inset 3px 0 0 var(--accent); }
-  .nav-item.locked{ opacity:.4; pointer-events:none; }
+  .nav-item.locked{ display:none; }
 
   .sidebar-foot{ margin-top:auto; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; font-size:12px; color:var(--muted); line-height:1.7; cursor:pointer; }
   .sidebar-foot:hover{ border-color:var(--accent); }
@@ -2178,6 +2178,10 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-user').value='';
   document.getElementById('login-pass').value='';
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.nav-item[data-page="dash"]').classList.add('active');
+  document.getElementById('dash').classList.add('active');
 });
 
 /* استعادة الجلسة تلقائيًا لو المتصفح كان مسجّل دخول من قبل */
