@@ -197,7 +197,14 @@
 
     <nav>
       <div class="nav-item active" data-page="dash"><span class="ic">01</span> لوحة المعلومات</div>
-      <div class="nav-item locked" data-page="submitrequest"><span class="ic">📨</span> تقديم طلب</div>
+      <div class="nav-group">
+        <div class="nav-item nav-parent" id="nav-requests-parent"><span class="ic">📨</span> الطلبات <span class="nav-caret">▾</span></div>
+        <div class="nav-sub" id="nav-requests-sub">
+          <div class="nav-item nav-child" data-page="submitrequest">تقديم طلب</div>
+          <div class="nav-item nav-child" data-page="requests">طلبات الإضافة</div>
+          <div class="nav-item nav-child" data-page="disposal">طلبات الإتلاف</div>
+        </div>
+      </div>
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
       <div class="nav-group">
@@ -214,8 +221,6 @@
       <div class="nav-item" data-page="stock"><span class="ic">📦</span> المخزون</div>
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
       <div class="nav-item locked" data-page="users" id="nav-users"><span class="ic">👤</span> إدارة المستخدمين</div>
-      <div class="nav-item locked" data-page="requests" id="nav-requests"><span class="ic">📥</span> طلبات الإضافة</div>
-      <div class="nav-item locked" data-page="disposal" id="nav-disposal"><span class="ic">♻️</span> طلبات الإتلاف</div>
     </nav>
 
     <div class="sidebar-foot" id="logout-btn">↩ تسجيل الخروج</div>
@@ -2412,8 +2417,11 @@ async function applyRoleUI(role, allowedPages, username){
     const item = document.querySelector(`.nav-item[data-page="${p}"]`);
     if(item) item.classList.toggle('locked', !currentAllowedPages.includes(p));
   });
-  const hasAnyAsset = ASSET_SUBVIEWS.some(p=>currentAllowedPages.includes(p));
-  document.getElementById('nav-assets-parent').classList.toggle('locked', !hasAnyAsset);
+  document.querySelectorAll('.nav-group').forEach(group=>{
+    const children = group.querySelectorAll('.nav-child');
+    const hasAny = Array.from(children).some(c=>currentAllowedPages.includes(c.dataset.page));
+    group.querySelector('.nav-parent').classList.toggle('locked', !hasAny);
+  });
 }
 
 document.getElementById('btn-login').addEventListener('click', async ()=>{
@@ -2446,7 +2454,7 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
   document.getElementById('login-pass').value='';
   document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active', 'open'));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('nav-assets-sub').classList.remove('open');
+  document.querySelectorAll('.nav-sub').forEach(s=>s.classList.remove('open'));
   document.querySelector('.nav-item[data-page="dash"]').classList.add('active');
   document.getElementById('dash').classList.add('active');
 });
@@ -2466,7 +2474,6 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
 })();
 
 /* ============ التنقل بين التبويبات ============ */
-const ASSET_SUBVIEWS = ['devices','network','servers','security','doors'];
 const items = document.querySelectorAll('.nav-item:not(.nav-parent)');
 const pages = document.querySelectorAll('.page');
 items.forEach(item=>{
@@ -2479,10 +2486,12 @@ items.forEach(item=>{
   });
 });
 
-/* ============ فتح/إغلاق مجموعة "الأجهزة" في القائمة الجانبية ============ */
-document.getElementById('nav-assets-parent').addEventListener('click', function(){
-  this.classList.toggle('open');
-  document.getElementById('nav-assets-sub').classList.toggle('open');
+/* ============ فتح/إغلاق مجموعات القائمة الجانبية (الأجهزة، الطلبات) ============ */
+document.querySelectorAll('.nav-parent').forEach(parent=>{
+  parent.addEventListener('click', function(){
+    this.classList.toggle('open');
+    this.nextElementSibling.classList.toggle('open');
+  });
 });
 
 document.getElementById('btn-refresh').addEventListener('click', async ()=>{
