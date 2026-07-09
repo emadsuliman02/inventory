@@ -1410,22 +1410,33 @@ async function saveStockItem(){
 const REQUEST_TYPE_LABELS = { device:'كمبيوتر', network:'سويتش / راوتر', server:'سيرفر', security:'جهاز أمان', employee:'موظف' };
 const REQUEST_STATUS_MAP = { 'معلق':'warn', 'مقبول':'ok', 'مرجّع':'off', 'مرفوض':'off' };
 
+const ACCESSORY_LABELS = ['كيبورد','ماوس','مكبرات صوت','سماعات أذن','بلوتوث','واي فاي'];
+
 const REQUEST_FIELDS = {
   device: [
     {key:'code', label:'اسم الجهاز', required:true},
     {key:'type', label:'النوع', type:'select', options:['مكتبي','محمول']},
     {key:'serial', label:'الرقم التسلسلي'},
+    {key:'user', label:'الموظف المستلم للجهاز', type:'employeeSelect'},
+    {key:'office', label:'القسم'},
+    {key:'ip', label:'عنوان IP'},
+    {key:'os', label:'نظام التشغيل'},
     {key:'cpu', label:'المعالج (CPU)'},
+    {key:'mbModel', group:'motherboard', groupKey:'model', label:'موديل اللوحة الأم'},
+    {key:'mbSlots', group:'motherboard', groupKey:'maxRamSlots', label:'عدد سلوتات الرام المدعومة'},
+    {key:'mbRamType', group:'motherboard', groupKey:'ramType', label:'نوع الرام (DDR)', type:'select', options:['غير محدد','DDR3','DDR4','DDR5']},
     {key:'ram', label:'الرام'},
     {key:'storage', label:'التخزين'},
-    {key:'os', label:'نظام التشغيل'},
-    {key:'office', label:'القسم'},
+    {key:'accessories', label:'الملحقات', type:'checkboxGroup', options:ACCESSORY_LABELS},
+    {key:'licOffice', label:'ترخيص Office', type:'boolSelect'},
+    {key:'licWindows', label:'ترخيص Windows', type:'boolSelect'},
     {key:'notes', label:'ملاحظات'},
   ],
   server: [
     {key:'name', label:'اسم الجهاز', required:true},
     {key:'location', label:'الموقع'},
     {key:'floor', label:'الدور'},
+    {key:'custodian', label:'بعهدة من', type:'employeeSelect'},
     {key:'model', label:'الموديل'},
     {key:'specs', label:'المواصفات'},
   ],
@@ -1433,6 +1444,7 @@ const REQUEST_FIELDS = {
     {key:'name', label:'اسم الجهاز', required:true},
     {key:'location', label:'الموقع'},
     {key:'floor', label:'الدور'},
+    {key:'custodian', label:'بعهدة من', type:'employeeSelect'},
     {key:'model', label:'الموديل'},
     {key:'specs', label:'المواصفات'},
   ],
@@ -1453,6 +1465,7 @@ const NETWORK_SUBFIELDS = {
     {key:'location', label:'الموقع'},
     {key:'ports', label:'عدد المنافذ'},
     {key:'ip', label:'عنوان IP'},
+    {key:'linked', label:'مربوط بـ'},
   ],
   router: [
     {key:'name', label:'الاسم / الكود', required:true},
@@ -1468,7 +1481,36 @@ function requestFieldHtml(f){
   if(f.type==='select'){
     return `<div><label>${escapeHtml(f.label)}${reqMark}</label><select id="reqf-${f.key}">${f.options.map(o=>`<option>${escapeHtml(o)}</option>`).join('')}</select></div>`;
   }
+  if(f.type==='boolSelect'){
+    return `<div><label>${escapeHtml(f.label)}${reqMark}</label><select id="reqf-${f.key}"><option>غير فعالة</option><option>فعالة</option></select></div>`;
+  }
+  if(f.type==='employeeSelect'){
+    const opts = DATA.employees.map(e=>`<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}</option>`).join('');
+    return `<div><label>${escapeHtml(f.label)}${reqMark}</label><select id="reqf-${f.key}"><option value="">بدون</option>${opts}</select></div>`;
+  }
+  if(f.type==='checkboxGroup'){
+    const boxes = (f.options||[]).map(o=>`
+      <label class="license-check" id="reqf-${f.key}-${o}-wrap"><input type="checkbox" id="reqf-${f.key}-${o}" data-name="${escapeHtml(o)}"> <span>${escapeHtml(o)}</span></label>`);
+    const rows = [];
+    for(let i=0;i<boxes.length;i+=2) rows.push(`<div class="license-row">${boxes[i]}${boxes[i+1]||''}</div>`);
+    return `<div><label>${escapeHtml(f.label)}${reqMark}</label>${rows.join('')}</div>`;
+  }
   return `<div><label>${escapeHtml(f.label)}${reqMark}</label><input id="reqf-${f.key}" placeholder="${escapeHtml(f.label)}"></div>`;
+}
+
+function wireDynamicCheckboxes(defs){
+  defs.forEach(f=>{
+    if(f.type!=='checkboxGroup') return;
+    (f.options||[]).forEach(o=>{
+      const chk = document.getElementById('reqf-'+f.key+'-'+o);
+      if(!chk) return;
+      chk.addEventListener('change', ()=>{
+        const w = chk.closest('.license-check');
+        w.classList.toggle('on', chk.checked);
+        w.querySelector('span').textContent = chk.dataset.name + (chk.checked ? ' — ✓ منشط' : '');
+      });
+    });
+  });
 }
 
 function renderRequestFields(){
@@ -1482,11 +1524,15 @@ function renderRequestFields(){
       </select></div><div id="req-network-fields"></div>`;
     return;
   }
-  wrap.innerHTML = (REQUEST_FIELDS[type]||[]).map(requestFieldHtml).join('');
+  const defs = REQUEST_FIELDS[type]||[];
+  wrap.innerHTML = defs.map(requestFieldHtml).join('');
+  wireDynamicCheckboxes(defs);
 }
 function renderNetworkSubfields(){
   const sub = document.getElementById('req-network-subtype').value;
-  document.getElementById('req-network-fields').innerHTML = sub ? (NETWORK_SUBFIELDS[sub]||[]).map(requestFieldHtml).join('') : '';
+  const defs = sub ? (NETWORK_SUBFIELDS[sub]||[]) : [];
+  document.getElementById('req-network-fields').innerHTML = defs.map(requestFieldHtml).join('');
+  wireDynamicCheckboxes(defs);
 }
 document.getElementById('req-type').addEventListener('change', renderRequestFields);
 
@@ -1497,6 +1543,54 @@ function currentRequestFieldDefs(){
     return NETWORK_SUBFIELDS[sub] || [];
   }
   return REQUEST_FIELDS[type] || [];
+}
+
+function collectRequestFields(defs){
+  const fields = {};
+  for(const f of defs){
+    let value;
+    if(f.type==='checkboxGroup'){
+      value = (f.options||[]).filter(o=>{
+        const chk = document.getElementById('reqf-'+f.key+'-'+o);
+        return chk && chk.checked;
+      });
+    } else if(f.type==='boolSelect'){
+      const el = document.getElementById('reqf-'+f.key);
+      value = !!el && el.value==='فعالة';
+    } else {
+      const el = document.getElementById('reqf-'+f.key);
+      if(!el) continue;
+      value = el.value.trim ? el.value.trim() : el.value;
+    }
+    if(f.group){
+      fields[f.group] = fields[f.group] || {};
+      fields[f.group][f.groupKey] = value;
+    } else {
+      fields[f.key] = value;
+    }
+  }
+  return fields;
+}
+
+function fillRequestFields(defs, fields){
+  fields = fields || {};
+  for(const f of defs){
+    const value = f.group ? (fields[f.group]||{})[f.groupKey] : fields[f.key];
+    if(f.type==='checkboxGroup'){
+      (f.options||[]).forEach(o=>{
+        const chk = document.getElementById('reqf-'+f.key+'-'+o);
+        if(!chk) return;
+        chk.checked = Array.isArray(value) && value.includes(o);
+        chk.dispatchEvent(new Event('change'));
+      });
+    } else if(f.type==='boolSelect'){
+      const el = document.getElementById('reqf-'+f.key);
+      if(el) el.value = value ? 'فعالة' : 'غير فعالة';
+    } else {
+      const el = document.getElementById('reqf-'+f.key);
+      if(el) el.value = value || '';
+    }
+  }
 }
 
 function resetRequestForm(){
@@ -1515,11 +1609,7 @@ async function submitRequestForm(){
     if(!networkSubtype){ showToast('⚠ اختر سويتش أو راوتر'); return; }
   }
   const defs = currentRequestFieldDefs();
-  const fields = {};
-  for(const f of defs){
-    const el = document.getElementById('reqf-'+f.key);
-    if(el) fields[f.key] = el.value.trim();
-  }
+  const fields = collectRequestFields(defs);
   const firstRequired = defs.find(f=>f.required);
   if(firstRequired && !fields[firstRequired.key]){ showToast('⚠ عبّي الحقول الإجبارية'); return; }
 
@@ -1555,10 +1645,7 @@ function editMyRequest(id){
   } else {
     defs = REQUEST_FIELDS[req.requestType] || [];
   }
-  for(const f of defs){
-    const el = document.getElementById('reqf-'+f.key);
-    if(el) el.value = (req.fields||{})[f.key] || '';
-  }
+  fillRequestFields(defs, req.fields);
   document.getElementById('submitrequest').scrollIntoView({behavior:'smooth'});
 }
 
@@ -1622,7 +1709,12 @@ function openRequestView(id){
   if(req.adminNote) html += viewRow('ملاحظة المسؤول', escapeHtml(req.adminNote));
   const defs = req.requestType==='network' ? (NETWORK_SUBFIELDS[req.networkSubtype]||[]) : (REQUEST_FIELDS[req.requestType]||[]);
   for(const f of defs){
-    html += viewRow(f.label, escapeHtml((req.fields||{})[f.key])||'—');
+    const raw = f.group ? ((req.fields||{})[f.group]||{})[f.groupKey] : (req.fields||{})[f.key];
+    let display;
+    if(f.type==='checkboxGroup') display = (Array.isArray(raw) && raw.length) ? escapeHtml(raw.join('، ')) : '—';
+    else if(f.type==='boolSelect') display = raw ? 'فعالة' : 'غير فعالة';
+    else display = escapeHtml(raw) || '—';
+    html += viewRow(f.label, display);
   }
   document.getElementById('view-body').innerHTML = html;
   openModal('modal-view');
