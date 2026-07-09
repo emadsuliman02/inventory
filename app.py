@@ -60,7 +60,10 @@ ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
 
 # التبويبات القابلة للتخصيص لحسابات "مستخدم عادي" — لوحة المعلومات دايمًا
 # متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
-ASSIGNABLE_PAGES = ['search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors']
+ASSIGNABLE_PAGES = [
+    'search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors',
+    'submitrequest', 'requests',
+]
 
 DEFAULT_ACCOUNTS = {
     'administrator': {
@@ -332,6 +335,22 @@ def require_admin():
     return None
 
 
+def has_page_access(page):
+    if current_role() == 'admin':
+        return True
+    accounts = load_accounts()
+    account = accounts.get(session.get('username')) or {}
+    return page in (account.get('allowedPages') or [])
+
+
+def require_page(page):
+    if not is_logged_in():
+        return jsonify({'error': 'الرجاء تسجيل الدخول أولاً'}), 401
+    if not has_page_access(page):
+        return jsonify({'error': 'ما عندك صلاحية الوصول لهذا القسم'}), 403
+    return None
+
+
 # ------------------------------------------------------------------
 # إدارة المستخدمين (مسؤول النظام فقط)
 # ------------------------------------------------------------------
@@ -427,7 +446,7 @@ def get_table(table):
         return jsonify(load_warehouses())
     if table == 'requests':
         records = load_table('requests')
-        if current_role() != 'admin':
+        if not has_page_access('requests'):
             records = [r for r in records if r.get('submittedBy') == session.get('username')]
         return jsonify(records)
     return jsonify(load_table(table))
@@ -596,7 +615,7 @@ def create_stock_item():
 # ------------------------------------------------------------------
 @app.route('/api/requests/submit', methods=['POST'])
 def submit_request():
-    err = require_login()
+    err = require_page('submitrequest')
     if err:
         return err
 
@@ -649,7 +668,7 @@ def submit_request():
 
 @app.route('/api/requests/<request_id>/decision', methods=['POST'])
 def decide_request(request_id):
-    err = require_admin()
+    err = require_page('requests')
     if err:
         return err
 

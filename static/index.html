@@ -190,7 +190,7 @@
 
     <nav>
       <div class="nav-item active" data-page="dash"><span class="ic">01</span> لوحة المعلومات</div>
-      <div class="nav-item" data-page="submitrequest"><span class="ic">📨</span> تقديم طلب</div>
+      <div class="nav-item locked" data-page="submitrequest"><span class="ic">📨</span> تقديم طلب</div>
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
       <div class="nav-item" data-page="devices"><span class="ic">03</span> أجهزة الكمبيوتر</div>
@@ -864,10 +864,11 @@ let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], secu
 let currentRole = null;
 let currentUsername = null;
 let currentAllowedPages = [];
-const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors'];
+const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors','submitrequest','requests'];
 const PAGE_LABELS = {
   search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', stock:'المخزون', network:'الشبكات والراوترات',
   servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
+  submitrequest:'تقديم طلب', requests:'طلبات الإضافة',
 };
 const revealedSecure = new Set();
 const revealedEmpFields = new Set();
@@ -2143,7 +2144,6 @@ async function applyRoleUI(role, allowedPages, username){
   document.getElementById('dash-role').textContent = roleLabel;
   document.getElementById('nav-secure').classList.toggle('locked', role!=='admin');
   document.getElementById('nav-users').classList.toggle('locked', role!=='admin');
-  document.getElementById('nav-requests').classList.toggle('locked', role!=='admin');
   ASSIGNABLE_PAGES.forEach(p=>{
     const item = document.querySelector(`.nav-item[data-page="${p}"]`);
     if(item) item.classList.toggle('locked', !currentAllowedPages.includes(p));
