@@ -90,8 +90,17 @@ def allowed_pages_for(account):
     return ASSIGNABLE_PAGES if account['role'] == 'admin' else account.get('allowedPages', [])
 
 
-TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'warehouses', 'stock_categories', 'stock_items']
+TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'warehouses', 'stock_categories', 'stock_items', 'requests']
 ADMIN_ONLY_TABLES = {'secure'}
+
+# الطلبات — الجدول الهدف اللي يتحول له الطلب عند القبول (سويتش/راوتر يتحدد حسب networkSubtype)
+REQUEST_TARGET_TABLE = {
+    'device': 'devices',
+    'server': 'servers',
+    'security': 'security',
+    'employee': 'employees',
+}
+REQUEST_STATUSES = {'معلق', 'مقبول', 'مرجّع', 'مرفوض'}
 
 # ------------------------------------------------------------------
 # تصدير / استيراد Excel — ترتيب وتسمية الأعمدة لكل جدول
@@ -416,6 +425,11 @@ def get_table(table):
         return err
     if table == 'warehouses':
         return jsonify(load_warehouses())
+    if table == 'requests':
+        records = load_table('requests')
+        if current_role() != 'admin':
+            records = [r for r in records if r.get('submittedBy') == session.get('username')]
+        return jsonify(records)
     return jsonify(load_table(table))
 
 
@@ -423,6 +437,8 @@ def get_table(table):
 def upsert_record(table):
     if table not in TABLES:
         return jsonify({'error': 'جدول غير معروف'}), 404
+    if table == 'requests':
+        return jsonify({'error': 'استخدم /api/requests/submit لتقديم الطلبات'}), 400
     err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
     if err:
         return err
@@ -453,7 +469,7 @@ def upsert_record(table):
 def delete_record(table, record_id):
     if table not in TABLES:
         return jsonify({'error': 'جدول غير معروف'}), 404
-    err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
+    err = require_admin() if (table in ADMIN_ONLY_TABLES or table == 'requests') else require_login()
     if err:
         return err
 
@@ -573,6 +589,109 @@ def create_stock_item():
     items.append(item)
     save_table('stock_items', items)
     return jsonify(item)
+
+
+# ------------------------------------------------------------------
+# طلبات الإضافة — الموظف يقدّم طلب، المسؤول يقبل/يرجع/يرفض
+# ------------------------------------------------------------------
+@app.route('/api/requests/submit', methods=['POST'])
+def submit_request():
+    err = require_login()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    request_type = body.get('requestType')
+    if request_type not in REQUEST_TARGET_TABLE and request_type != 'network':
+        return jsonify({'error': 'نوع الطلب غير معروف'}), 400
+
+    network_subtype = body.get('networkSubtype') if request_type == 'network' else None
+    if request_type == 'network' and network_subtype not in ('switch', 'router'):
+        return jsonify({'error': 'حدد سويتش أو راوتر'}), 400
+
+    fields = body.get('fields') or {}
+    username = session['username']
+    req_id = body.get('id')
+
+    requests_list = load_table('requests')
+
+    if req_id:
+        existing = next((r for r in requests_list if r.get('id') == req_id), None)
+        if not existing or existing.get('submittedBy') != username:
+            return jsonify({'error': 'الطلب غير موجود'}), 404
+        if existing.get('status') != 'مرجّع':
+            return jsonify({'error': 'لا يمكن تعديل هذا الطلب في حالته الحالية'}), 400
+        existing.update({
+            'requestType': request_type,
+            'networkSubtype': network_subtype,
+            'fields': fields,
+            'status': 'معلق',
+            'adminNote': '',
+            'submittedAt': date.today().isoformat(),
+        })
+        record = existing
+    else:
+        record = {
+            'id': uuid.uuid4().hex,
+            'requestType': request_type,
+            'networkSubtype': network_subtype,
+            'fields': fields,
+            'submittedBy': username,
+            'submittedAt': date.today().isoformat(),
+            'status': 'معلق',
+            'adminNote': '',
+        }
+        requests_list.append(record)
+
+    save_table('requests', requests_list)
+    return jsonify(record)
+
+
+@app.route('/api/requests/<request_id>/decision', methods=['POST'])
+def decide_request(request_id):
+    err = require_admin()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    decision = body.get('decision')
+    note = (body.get('note') or '').strip()
+    if decision not in ('accept', 'return', 'reject'):
+        return jsonify({'error': 'إجراء غير معروف'}), 400
+
+    requests_list = load_table('requests')
+    req = next((r for r in requests_list if r.get('id') == request_id), None)
+    if not req:
+        return jsonify({'error': 'الطلب غير موجود'}), 404
+
+    if decision == 'accept':
+        target_table = REQUEST_TARGET_TABLE.get(req['requestType'])
+        if req['requestType'] == 'network':
+            target_table = 'switches' if req.get('networkSubtype') == 'switch' else 'routers'
+        records = load_table(target_table)
+        new_record = dict(req.get('fields') or {})
+        new_record['id'] = uuid.uuid4().hex
+        if target_table == 'devices':
+            new_record.setdefault('status', 'يعمل')
+        elif target_table == 'employees':
+            new_record.setdefault('status', 'نشط')
+        elif target_table in ('switches', 'routers'):
+            new_record.setdefault('status', 'متصل')
+        elif target_table == 'servers' or target_table == 'security':
+            new_record.setdefault('status', 'متاح')
+        records.append(new_record)
+        save_table(target_table, records)
+        req['status'] = 'مقبول'
+        req['adminNote'] = note
+    elif decision == 'return':
+        req['status'] = 'مرجّع'
+        req['adminNote'] = note
+    else:
+        req['status'] = 'مرفوض'
+        req['adminNote'] = note
+
+    save_table('requests', requests_list)
+    return jsonify(req)
 
 
 # ------------------------------------------------------------------

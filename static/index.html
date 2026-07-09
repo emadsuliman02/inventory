@@ -190,6 +190,7 @@
 
     <nav>
       <div class="nav-item active" data-page="dash"><span class="ic">01</span> لوحة المعلومات</div>
+      <div class="nav-item" data-page="submitrequest"><span class="ic">📨</span> تقديم طلب</div>
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
       <div class="nav-item" data-page="devices"><span class="ic">03</span> أجهزة الكمبيوتر</div>
@@ -201,6 +202,7 @@
       <div class="nav-item" data-page="doors"><span class="ic">07</span> الأبواب الذكية</div>
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
       <div class="nav-item locked" data-page="users" id="nav-users"><span class="ic">👤</span> إدارة المستخدمين</div>
+      <div class="nav-item locked" data-page="requests" id="nav-requests"><span class="ic">📥</span> طلبات الإضافة</div>
     </nav>
 
     <div class="sidebar-foot" id="logout-btn">↩ تسجيل الخروج</div>
@@ -233,6 +235,47 @@
       </div>
       <div class="secure-note">
         <div>ℹ️ سجلت الدخول كـ <b id="dash-role">مسؤول النظام</b>. كل إضافة أو تعديل تسويه ينحفظ فورًا على السيرفر ويظهر لباقي الموظفين على الشبكة.</div>
+      </div>
+    </section>
+
+    <section class="page" id="submitrequest">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">📨 طلب</div>
+          <h2>تقديم طلب</h2>
+          <p>المكان الموحّد لطلب إضافة جهاز، سيرفر، جهاز أمان، سويتش/راوتر، أو موظف — يراجعه مسؤول النظام ويقبله أو يرجعه أو يرفضه.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3 id="request-form-title">طلب جديد</h3></div>
+        <div class="modal-body" style="padding:20px;">
+          <input type="hidden" id="req-id">
+          <div><label>نوع الطلب <span class="req">*</span></label>
+            <select id="req-type">
+              <option value="">اختر النوع</option>
+              <option value="device">كمبيوتر</option>
+              <option value="network">سويتش / راوتر</option>
+              <option value="server">سيرفر</option>
+              <option value="security">جهاز أمان</option>
+              <option value="employee">موظف</option>
+            </select>
+          </div>
+          <div id="req-fields"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-cancel" onclick="resetRequestForm()">إلغاء</button>
+          <button class="btn-save" onclick="submitRequestForm()">إرسال الطلب</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>طلباتي</h3><span class="count" id="count-myrequests">0 طلب</span></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>النوع</th><th>التاريخ</th><th>الحالة</th><th>ملاحظة المسؤول</th><th></th></tr></thead>
+          <tbody id="tbody-myrequests"></tbody>
+        </table>
+        </div>
       </div>
     </section>
 
@@ -483,6 +526,25 @@
         <table>
           <thead><tr><th>اسم المستخدم</th><th>الصلاحية</th><th>التبويبات المتاحة</th><th></th></tr></thead>
           <tbody id="tbody-users"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="requests">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">📥 وصول مقيّد</div>
+          <h2>طلبات الإضافة</h2>
+          <p>راجع طلبات الموظفين — قبول يضيفها مباشرة للنظام، إرجاع يرسلها للموظف يعدّلها، رفض يقفلها. هذا التبويب مخصص لمسؤول النظام فقط.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>الطلبات</h3><span class="count" id="count-requests">0 طلب</span></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>النوع</th><th>مقدّم الطلب</th><th>التاريخ</th><th>الحالة</th><th></th></tr></thead>
+          <tbody id="tbody-requests"></tbody>
         </table>
         </div>
       </div>
@@ -798,8 +860,9 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[], requests:[] };
 let currentRole = null;
+let currentUsername = null;
 let currentAllowedPages = [];
 const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors'];
 const PAGE_LABELS = {
@@ -896,20 +959,21 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 });
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
     apiGet('servers'), apiGet('security'), apiGet('doors'),
     currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
     currentRole==='admin' ? apiGet('users') : Promise.resolve([]),
-    apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items')
+    apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items'), apiGet('requests')
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items };
+  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests };
   renderAll();
 }
 
 function renderAll(){
   renderEmployees(); renderDevices(); renderCustody(); renderStock(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
   renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
+  renderMyRequests(); renderRequestsAdmin();
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
 
@@ -1339,6 +1403,250 @@ async function saveStockItem(){
     }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); return; }
   }
   closeModal('modal-stockitem'); await loadAll(); showToast('تم حفظ القطعة');
+}
+
+/* ============ طلبات الإضافة: تقديم / مراجعة الموظف / قرار المسؤول ============ */
+const REQUEST_TYPE_LABELS = { device:'كمبيوتر', network:'سويتش / راوتر', server:'سيرفر', security:'جهاز أمان', employee:'موظف' };
+const REQUEST_STATUS_MAP = { 'معلق':'warn', 'مقبول':'ok', 'مرجّع':'off', 'مرفوض':'off' };
+
+const REQUEST_FIELDS = {
+  device: [
+    {key:'code', label:'اسم الجهاز', required:true},
+    {key:'type', label:'النوع', type:'select', options:['مكتبي','محمول']},
+    {key:'serial', label:'الرقم التسلسلي'},
+    {key:'cpu', label:'المعالج (CPU)'},
+    {key:'ram', label:'الرام'},
+    {key:'storage', label:'التخزين'},
+    {key:'os', label:'نظام التشغيل'},
+    {key:'office', label:'القسم'},
+    {key:'notes', label:'ملاحظات'},
+  ],
+  server: [
+    {key:'name', label:'اسم الجهاز', required:true},
+    {key:'location', label:'الموقع'},
+    {key:'floor', label:'الدور'},
+    {key:'model', label:'الموديل'},
+    {key:'specs', label:'المواصفات'},
+  ],
+  security: [
+    {key:'name', label:'اسم الجهاز', required:true},
+    {key:'location', label:'الموقع'},
+    {key:'floor', label:'الدور'},
+    {key:'model', label:'الموديل'},
+    {key:'specs', label:'المواصفات'},
+  ],
+  employee: [
+    {key:'name', label:'الاسم', required:true},
+    {key:'empId', label:'الرقم الوظيفي'},
+    {key:'title', label:'المسمى الوظيفي'},
+    {key:'ext', label:'رقم التحويلة'},
+    {key:'email', label:'البريد الإلكتروني'},
+    {key:'username', label:'اسم المستخدم'},
+    {key:'office', label:'المكتب / القسم'},
+    {key:'notes', label:'ملاحظات'},
+  ],
+};
+const NETWORK_SUBFIELDS = {
+  switch: [
+    {key:'name', label:'الاسم / الكود', required:true},
+    {key:'location', label:'الموقع'},
+    {key:'ports', label:'عدد المنافذ'},
+    {key:'ip', label:'عنوان IP'},
+  ],
+  router: [
+    {key:'name', label:'الاسم / الكود', required:true},
+    {key:'location', label:'الموقع'},
+    {key:'ip', label:'عنوان IP'},
+    {key:'ssid', label:'اسم الشبكة (SSID)'},
+  ],
+};
+const NETWORK_SUBTYPE_LABELS = { switch:'سويتش', router:'راوتر' };
+
+function requestFieldHtml(f){
+  const reqMark = f.required ? ' <span class="req">*</span>' : '';
+  if(f.type==='select'){
+    return `<div><label>${escapeHtml(f.label)}${reqMark}</label><select id="reqf-${f.key}">${f.options.map(o=>`<option>${escapeHtml(o)}</option>`).join('')}</select></div>`;
+  }
+  return `<div><label>${escapeHtml(f.label)}${reqMark}</label><input id="reqf-${f.key}" placeholder="${escapeHtml(f.label)}"></div>`;
+}
+
+function renderRequestFields(){
+  const type = document.getElementById('req-type').value;
+  const wrap = document.getElementById('req-fields');
+  if(!type){ wrap.innerHTML = ''; return; }
+  if(type==='network'){
+    wrap.innerHTML = `<div><label>نوع الجهاز <span class="req">*</span></label>
+      <select id="req-network-subtype" onchange="renderNetworkSubfields()">
+        <option value="">اختر</option><option value="switch">سويتش</option><option value="router">راوتر</option>
+      </select></div><div id="req-network-fields"></div>`;
+    return;
+  }
+  wrap.innerHTML = (REQUEST_FIELDS[type]||[]).map(requestFieldHtml).join('');
+}
+function renderNetworkSubfields(){
+  const sub = document.getElementById('req-network-subtype').value;
+  document.getElementById('req-network-fields').innerHTML = sub ? (NETWORK_SUBFIELDS[sub]||[]).map(requestFieldHtml).join('') : '';
+}
+document.getElementById('req-type').addEventListener('change', renderRequestFields);
+
+function currentRequestFieldDefs(){
+  const type = document.getElementById('req-type').value;
+  if(type==='network'){
+    const sub = document.getElementById('req-network-subtype') ? document.getElementById('req-network-subtype').value : '';
+    return NETWORK_SUBFIELDS[sub] || [];
+  }
+  return REQUEST_FIELDS[type] || [];
+}
+
+function resetRequestForm(){
+  document.getElementById('request-form-title').textContent = 'طلب جديد';
+  document.getElementById('req-id').value = '';
+  document.getElementById('req-type').value = '';
+  document.getElementById('req-fields').innerHTML = '';
+}
+
+async function submitRequestForm(){
+  const type = document.getElementById('req-type').value;
+  if(!type){ showToast('⚠ اختر نوع الطلب'); return; }
+  let networkSubtype = null;
+  if(type==='network'){
+    networkSubtype = document.getElementById('req-network-subtype') ? document.getElementById('req-network-subtype').value : '';
+    if(!networkSubtype){ showToast('⚠ اختر سويتش أو راوتر'); return; }
+  }
+  const defs = currentRequestFieldDefs();
+  const fields = {};
+  for(const f of defs){
+    const el = document.getElementById('reqf-'+f.key);
+    if(el) fields[f.key] = el.value.trim();
+  }
+  const firstRequired = defs.find(f=>f.required);
+  if(firstRequired && !fields[firstRequired.key]){ showToast('⚠ عبّي الحقول الإجبارية'); return; }
+
+  const id = document.getElementById('req-id').value || undefined;
+  try{
+    const res = await fetch('/api/requests/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ id, requestType:type, networkSubtype, fields }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر إرسال الطلب');
+      return;
+    }
+    resetRequestForm();
+    await loadAll();
+    showToast('تم إرسال الطلب');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+}
+
+function editMyRequest(id){
+  const req = DATA.requests.find(r=>r.id===id);
+  if(!req) return;
+  document.getElementById('request-form-title').textContent = '✎ تعديل طلب مرجّع';
+  document.getElementById('req-id').value = req.id;
+  document.getElementById('req-type').value = req.requestType;
+  renderRequestFields();
+  let defs;
+  if(req.requestType==='network'){
+    document.getElementById('req-network-subtype').value = req.networkSubtype;
+    renderNetworkSubfields();
+    defs = NETWORK_SUBFIELDS[req.networkSubtype] || [];
+  } else {
+    defs = REQUEST_FIELDS[req.requestType] || [];
+  }
+  for(const f of defs){
+    const el = document.getElementById('reqf-'+f.key);
+    if(el) el.value = (req.fields||{})[f.key] || '';
+  }
+  document.getElementById('submitrequest').scrollIntoView({behavior:'smooth'});
+}
+
+function requestTypeLabel(r){
+  return REQUEST_TYPE_LABELS[r.requestType] + (r.requestType==='network' ? ' — ' + NETWORK_SUBTYPE_LABELS[r.networkSubtype] : '');
+}
+
+function renderMyRequests(){
+  const tbody = document.getElementById('tbody-myrequests');
+  if(!tbody) return;
+  const mine = DATA.requests.filter(r=>r.submittedBy===currentUsername);
+  document.getElementById('count-myrequests').textContent = mine.length + ' طلب';
+  if(mine.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">لم تقدّم أي طلب بعد</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = mine.slice().reverse().map(r=>`
+    <tr>
+      <td>${escapeHtml(requestTypeLabel(r))}</td>
+      <td class="mono">${escapeHtml(r.submittedAt)||'—'}</td>
+      <td>${statusBadge(r.status, REQUEST_STATUS_MAP)}</td>
+      <td>${escapeHtml(r.adminNote)||'—'}</td>
+      <td>${r.status==='مرجّع' ? `<button class="icon-btn" onclick="editMyRequest('${r.id}')" title="تعديل وإعادة إرسال">✎</button>` : ''}</td>
+    </tr>`).join('');
+}
+
+function renderRequestsAdmin(){
+  const tbody = document.getElementById('tbody-requests');
+  if(!tbody) return;
+  document.getElementById('count-requests').textContent = DATA.requests.length + ' طلب';
+  if(DATA.requests.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">لا توجد طلبات بعد</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DATA.requests.slice().reverse().map(r=>`
+    <tr>
+      <td>${escapeHtml(requestTypeLabel(r))}</td>
+      <td>${escapeHtml(r.submittedBy)}</td>
+      <td class="mono">${escapeHtml(r.submittedAt)||'—'}</td>
+      <td>${statusBadge(r.status, REQUEST_STATUS_MAP)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="openRequestView('${r.id}')" title="عرض">🔎</button>
+        ${r.status==='معلق' ? `
+          <button class="icon-btn" onclick="decideRequest('${r.id}','accept')" title="قبول">✔</button>
+          <button class="icon-btn" onclick="decideRequest('${r.id}','return')" title="إرجاع للتعديل">↩</button>
+          <button class="icon-btn" onclick="decideRequest('${r.id}','reject')" title="رفض">✕</button>
+        ` : ''}
+      </div></td>
+    </tr>`).join('');
+}
+
+function openRequestView(id){
+  const req = DATA.requests.find(r=>r.id===id);
+  if(!req) return;
+  document.getElementById('view-modal-title').textContent = '📨 تفاصيل الطلب';
+  let html = '';
+  html += viewRow('نوع الطلب', escapeHtml(requestTypeLabel(req)));
+  html += viewRow('مقدّم الطلب', escapeHtml(req.submittedBy));
+  html += viewRow('التاريخ', escapeHtml(req.submittedAt)||'—');
+  html += viewRow('الحالة', statusBadge(req.status, REQUEST_STATUS_MAP));
+  if(req.adminNote) html += viewRow('ملاحظة المسؤول', escapeHtml(req.adminNote));
+  const defs = req.requestType==='network' ? (NETWORK_SUBFIELDS[req.networkSubtype]||[]) : (REQUEST_FIELDS[req.requestType]||[]);
+  for(const f of defs){
+    html += viewRow(f.label, escapeHtml((req.fields||{})[f.key])||'—');
+  }
+  document.getElementById('view-body').innerHTML = html;
+  openModal('modal-view');
+}
+
+async function decideRequest(id, decision){
+  let note = '';
+  if(decision!=='accept'){
+    note = prompt(decision==='return' ? 'ملاحظة للموظف (سبب الإرجاع):' : 'ملاحظة للموظف (سبب الرفض، اختياري):') || '';
+  } else if(!confirm('تأكيد قبول الطلب وإضافته مباشرة للنظام؟')){
+    return;
+  }
+  try{
+    const res = await fetch('/api/requests/'+id+'/decision', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ decision, note }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر تنفيذ الإجراء');
+      return;
+    }
+    await loadAll();
+    showToast(decision==='accept' ? 'تم القبول والإضافة للنظام' : decision==='return' ? 'تم إرجاع الطلب للموظف' : 'تم رفض الطلب');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
 }
 
 /* ============ عرض: السويتشات ============ */
@@ -1826,14 +2134,16 @@ document.querySelectorAll('.license-check input').forEach(chk=>{
 });
 
 /* ============ تسجيل الدخول ============ */
-async function applyRoleUI(role, allowedPages){
+async function applyRoleUI(role, allowedPages, username){
   currentRole = role;
+  currentUsername = username || currentUsername;
   currentAllowedPages = role==='admin' ? ASSIGNABLE_PAGES : (allowedPages || []);
   const roleLabel = role==='admin' ? 'مسؤول النظام' : 'مستخدم عادي';
   document.getElementById('role-badge').textContent = '● ' + roleLabel;
   document.getElementById('dash-role').textContent = roleLabel;
   document.getElementById('nav-secure').classList.toggle('locked', role!=='admin');
   document.getElementById('nav-users').classList.toggle('locked', role!=='admin');
+  document.getElementById('nav-requests').classList.toggle('locked', role!=='admin');
   ASSIGNABLE_PAGES.forEach(p=>{
     const item = document.querySelector(`.nav-item[data-page="${p}"]`);
     if(item) item.classList.toggle('locked', !currentAllowedPages.includes(p));
@@ -1854,7 +2164,7 @@ document.getElementById('btn-login').addEventListener('click', async ()=>{
     document.getElementById('login-error').style.display='none';
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').classList.add('show');
-    await applyRoleUI(data.role, data.allowedPages);
+    await applyRoleUI(data.role, data.allowedPages, data.username);
     await loadAll();
   }catch(e){
     document.getElementById('login-error').textContent = 'تعذّر الاتصال بالسيرفر — تأكد إنك على نفس الشبكة.';
@@ -1878,7 +2188,7 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
     if(data.loggedIn){
       document.getElementById('login-screen').style.display='none';
       document.getElementById('app').classList.add('show');
-      await applyRoleUI(data.role, data.allowedPages);
+      await applyRoleUI(data.role, data.allowedPages, data.username);
       await loadAll();
     }
   }catch(e){ /* السيرفر غير متاح بعد، يبقى بشاشة الدخول */ }
