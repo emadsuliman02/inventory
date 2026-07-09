@@ -65,6 +65,8 @@
   main{ flex:1; padding:34px 40px; max-width:1240px; }
   .page{ display:none; animation:fade .25s ease; }
   .page.active{ display:block; }
+  .asset-sub{ display:none; }
+  .asset-sub.active{ display:block; animation:fade .25s ease; }
   @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
 
   .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:26px; flex-wrap:wrap; }
@@ -193,13 +195,9 @@
       <div class="nav-item locked" data-page="submitrequest"><span class="ic">📨</span> تقديم طلب</div>
       <div class="nav-item" data-page="search"><span class="ic">🔍</span> البحث</div>
       <div class="nav-item" data-page="employees"><span class="ic">02</span> الموظفون</div>
-      <div class="nav-item" data-page="devices"><span class="ic">03</span> أجهزة الكمبيوتر</div>
+      <div class="nav-item" data-page="devices"><span class="ic">03</span> الأجهزة</div>
       <div class="nav-item" data-page="custody"><span class="ic">📋</span> العهد</div>
       <div class="nav-item" data-page="stock"><span class="ic">📦</span> المخزون</div>
-      <div class="nav-item" data-page="network"><span class="ic">04</span> الشبكات والراوترات</div>
-      <div class="nav-item" data-page="servers"><span class="ic">05</span> السيرفرات</div>
-      <div class="nav-item" data-page="security"><span class="ic">06</span> أجهزة الأمان</div>
-      <div class="nav-item" data-page="doors"><span class="ic">07</span> الأبواب الذكية</div>
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
       <div class="nav-item locked" data-page="users" id="nav-users"><span class="ic">👤</span> إدارة المستخدمين</div>
       <div class="nav-item locked" data-page="requests" id="nav-requests"><span class="ic">📥</span> طلبات الإضافة</div>
@@ -326,24 +324,130 @@
       <div class="page-head">
         <div>
           <div class="eyebrow">03 / السجل</div>
-          <h2>أجهزة الكمبيوتر</h2>
-          <p>المواصفات الكاملة لكل جهاز وحالة التراخيص.</p>
+          <h2>الأجهزة</h2>
+          <p>اختر نوع الجهاز من القائمة لعرض سجلّه الكامل.</p>
         </div>
         <div class="head-actions">
-          <button class="btn-ghost" id="btn-open-devicefilter" onclick="openDeviceFilter()">🧰 تصفية</button>
-          <button class="btn-add" onclick="openDeviceForm()">＋ إضافة جهاز</button>
+          <select id="assets-subview">
+            <option value="sub-devices" data-perm="devices">أجهزة الكمبيوتر</option>
+            <option value="sub-network" data-perm="network">السويتشات والراوترات</option>
+            <option value="sub-servers" data-perm="servers">السيرفرات</option>
+            <option value="sub-security" data-perm="security">أجهزة الأمان</option>
+            <option value="sub-doors" data-perm="doors">الأبواب الذكية</option>
+          </select>
         </div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><h3>قائمة الأجهزة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-devices">0 سجل</span><button class="icon-btn" onclick="exportTable('devices')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('devices')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>المعرّف</th><th>النوع</th><th>المعالج</th><th>الرام</th><th>التخزين</th>
-            <th>النظام</th><th>التراخيص</th><th>المكتب/القسم</th><th>المستخدم</th><th>الحالة</th><th></th>
-          </tr></thead>
-          <tbody id="tbody-devices"></tbody>
-        </table>
+
+      <div class="asset-sub active" id="sub-devices">
+        <div class="page-head">
+          <div>
+            <h2 style="font-size:18px;">أجهزة الكمبيوتر</h2>
+            <p>المواصفات الكاملة لكل جهاز وحالة التراخيص.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-ghost" id="btn-open-devicefilter" onclick="openDeviceFilter()">🧰 تصفية</button>
+            <button class="btn-add" onclick="openDeviceForm()">＋ إضافة جهاز</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>قائمة الأجهزة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-devices">0 سجل</span><button class="icon-btn" onclick="exportTable('devices')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('devices')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>المعرّف</th><th>النوع</th><th>المعالج</th><th>الرام</th><th>التخزين</th>
+              <th>النظام</th><th>التراخيص</th><th>المكتب/القسم</th><th>المستخدم</th><th>الحالة</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-devices"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-sub" id="sub-network">
+        <div class="page-head">
+          <div>
+            <h2 style="font-size:18px;">السويتشات والراوترات</h2>
+            <p>موقع كل جهاز شبكة. بيانات الدخول محجوبة هنا عمدًا وتُدار من القسم الآمن.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-add" onclick="openSwitchForm()">＋ سويتش</button>
+            <button class="btn-add" onclick="openRouterForm()">＋ راوتر</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>السويتشات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-switches">0 أجهزة</span><button class="icon-btn" onclick="exportTable('switches')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('switches')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الموقع</th><th>المنافذ</th><th>IP</th><th>مربوط بـ</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="tbody-switches"></tbody>
+          </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>الراوترات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-routers">0 أجهزة</span><button class="icon-btn" onclick="exportTable('routers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('routers')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الموقع</th><th>IP</th><th>SSID</th><th>بيانات الدخول</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="tbody-routers"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-sub" id="sub-servers">
+        <div class="page-head">
+          <div>
+            <h2 style="font-size:18px;">السيرفرات</h2>
+            <p>موقع كل سيرفر، الموظف المسؤول عنه، وسجل من حازه سابقًا.</p>
+          </div>
+          <button class="btn-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>قائمة السيرفرات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-servers">0 سجل</span><button class="icon-btn" onclick="exportTable('servers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('servers')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="tbody-servers"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-sub" id="sub-security">
+        <div class="page-head">
+          <div>
+            <h2 style="font-size:18px;">أجهزة الأمان</h2>
+            <p>كاميرات، أنظمة إنذار، وأجهزة مراقبة — موقعها والمسؤول عنها.</p>
+          </div>
+          <button class="btn-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>قائمة أجهزة الأمان</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-security">0 سجل</span><button class="icon-btn" onclick="exportTable('security')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('security')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="tbody-security"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="asset-sub" id="sub-doors">
+        <div class="page-head">
+          <div>
+            <h2 style="font-size:18px;">الأبواب الذكية</h2>
+            <p>موقع كل باب ذكي وحالته والمسؤول عنه.</p>
+          </div>
+          <button class="btn-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>قائمة الأبواب الذكية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-doors">0 سجل</span><button class="icon-btn" onclick="exportTable('doors')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('doors')" title="استيراد Excel">⬆</button></div></div>
+          <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="tbody-doors"></tbody>
+          </table>
+          </div>
         </div>
       </div>
     </section>
@@ -394,99 +498,6 @@
         <table>
           <thead><tr><th>رمز القطعة</th><th>اسم القطعة</th><th>الفئة</th><th>المستودع</th><th>الكمية</th><th>الحالة</th><th></th></tr></thead>
           <tbody id="tbody-stock"></tbody>
-        </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="page" id="network">
-      <div class="page-head">
-        <div>
-          <div class="eyebrow">04 / السجل</div>
-          <h2>السويتشات والراوترات</h2>
-          <p>موقع كل جهاز شبكة. بيانات الدخول محجوبة هنا عمدًا وتُدار من القسم الآمن.</p>
-        </div>
-        <div class="head-actions">
-          <button class="btn-add" onclick="openSwitchForm()">＋ سويتش</button>
-          <button class="btn-add" onclick="openRouterForm()">＋ راوتر</button>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>السويتشات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-switches">0 أجهزة</span><button class="icon-btn" onclick="exportTable('switches')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('switches')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>المنافذ</th><th>IP</th><th>مربوط بـ</th><th>الحالة</th><th></th></tr></thead>
-          <tbody id="tbody-switches"></tbody>
-        </table>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>الراوترات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-routers">0 أجهزة</span><button class="icon-btn" onclick="exportTable('routers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('routers')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>IP</th><th>SSID</th><th>بيانات الدخول</th><th>الحالة</th><th></th></tr></thead>
-          <tbody id="tbody-routers"></tbody>
-        </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- السيرفرات / أجهزة الأمان / الأبواب الذكية (نفس القالب لكل نوع) -->
-    <section class="page" id="servers">
-      <div class="page-head">
-        <div>
-          <div class="eyebrow">05 / السجل</div>
-          <h2>السيرفرات</h2>
-          <p>موقع كل سيرفر، الموظف المسؤول عنه، وسجل من حازه سابقًا.</p>
-        </div>
-        <button class="btn-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>قائمة السيرفرات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-servers">0 سجل</span><button class="icon-btn" onclick="exportTable('servers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('servers')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
-          <tbody id="tbody-servers"></tbody>
-        </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="page" id="security">
-      <div class="page-head">
-        <div>
-          <div class="eyebrow">06 / السجل</div>
-          <h2>أجهزة الأمان</h2>
-          <p>كاميرات، أنظمة إنذار، وأجهزة مراقبة — موقعها والمسؤول عنها.</p>
-        </div>
-        <button class="btn-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>قائمة أجهزة الأمان</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-security">0 سجل</span><button class="icon-btn" onclick="exportTable('security')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('security')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
-          <tbody id="tbody-security"></tbody>
-        </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="page" id="doors">
-      <div class="page-head">
-        <div>
-          <div class="eyebrow">07 / السجل</div>
-          <h2>الأبواب الذكية</h2>
-          <p>موقع كل باب ذكي وحالته والمسؤول عنه.</p>
-        </div>
-        <button class="btn-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>قائمة الأبواب الذكية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-doors">0 سجل</span><button class="icon-btn" onclick="exportTable('doors')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('doors')" title="استيراد Excel">⬆</button></div></div>
-        <div class="table-wrap">
-        <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
-          <tbody id="tbody-doors"></tbody>
         </table>
         </div>
       </div>
@@ -2400,6 +2411,21 @@ async function applyRoleUI(role, allowedPages, username){
     const item = document.querySelector(`.nav-item[data-page="${p}"]`);
     if(item) item.classList.toggle('locked', !currentAllowedPages.includes(p));
   });
+  const hasAnyAsset = ASSET_SUBVIEWS.some(p=>currentAllowedPages.includes(p));
+  const devicesNav = document.querySelector('.nav-item[data-page="devices"]');
+  if(devicesNav) devicesNav.classList.toggle('locked', !hasAnyAsset);
+  const subSelect = document.getElementById('assets-subview');
+  let firstAllowed = null;
+  Array.from(subSelect.options).forEach(opt=>{
+    const allowed = currentAllowedPages.includes(opt.dataset.perm);
+    opt.hidden = !allowed;
+    if(allowed && !firstAllowed) firstAllowed = opt.value;
+  });
+  if(firstAllowed && !currentAllowedPages.includes(subSelect.value.replace('sub-',''))){
+    subSelect.value = firstAllowed;
+    document.querySelectorAll('#devices > .asset-sub').forEach(el=>el.classList.remove('active'));
+    document.getElementById(firstAllowed).classList.add('active');
+  }
 }
 
 document.getElementById('btn-login').addEventListener('click', async ()=>{
@@ -2461,6 +2487,14 @@ items.forEach(item=>{
     item.classList.add('active');
     document.getElementById(item.dataset.page).classList.add('active');
   });
+});
+
+/* ============ قائمة "الأجهزة" المدمجة (كمبيوتر / شبكات / سيرفرات / أمان / أبواب) ============ */
+const ASSET_SUBVIEWS = ['devices','network','servers','security','doors'];
+document.getElementById('assets-subview').addEventListener('change', function(){
+  document.querySelectorAll('#devices > .asset-sub').forEach(el=>el.classList.remove('active'));
+  const el = document.getElementById(this.value);
+  if(el) el.classList.add('active');
 });
 
 document.getElementById('btn-refresh').addEventListener('click', async ()=>{
