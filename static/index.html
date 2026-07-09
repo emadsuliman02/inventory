@@ -33,6 +33,7 @@
   .login-box h1{ font-size:21px; font-weight:900; margin:8px 0 4px; text-align:center; }
   .login-box p{ color:var(--muted); font-size:13px; margin-bottom:22px; text-align:center; }
   .field{ margin-bottom:14px; }
+  .quick-search{ width:100%; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:14px; }
   .field label{ display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
   .field input{ width:100%; padding:11px 12px; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:'Azer', sans-serif; font-size:13px; }
   .field input:focus{ outline:none; border-color:var(--accent); }
@@ -351,6 +352,9 @@
           <button class="btn-add" onclick="openDeviceForm()">＋ إضافة جهاز</button>
         </div>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-devices" class="quick-search" placeholder="ابحث بالمعرّف، النوع، المعالج، الرام، النظام، المستخدم...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة الأجهزة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-devices">0 سجل</span><button class="icon-btn" onclick="exportTable('devices')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('devices')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
@@ -376,6 +380,9 @@
           <button class="btn-add" onclick="openSwitchForm()">＋ سويتش</button>
           <button class="btn-add" onclick="openRouterForm()">＋ راوتر</button>
         </div>
+      </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-network" class="quick-search" placeholder="ابحث بالاسم، الموقع، IP، SSID... (يبحث بالسويتشات والراوترات معًا)">
       </div>
       <div class="panel">
         <div class="panel-head"><h3>السويتشات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-switches">0 أجهزة</span><button class="icon-btn" onclick="exportTable('switches')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('switches')" title="استيراد Excel">⬆</button></div></div>
@@ -407,6 +414,9 @@
         </div>
         <button class="btn-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-servers" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة السيرفرات</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-servers">0 سجل</span><button class="icon-btn" onclick="exportTable('servers')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('servers')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
@@ -426,6 +436,9 @@
           <p>كاميرات، أنظمة إنذار، وأجهزة مراقبة — موقعها والمسؤول عنها.</p>
         </div>
         <button class="btn-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
+      </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-security" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
       </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة أجهزة الأمان</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-security">0 سجل</span><button class="icon-btn" onclick="exportTable('security')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('security')" title="استيراد Excel">⬆</button></div></div>
@@ -447,6 +460,9 @@
         </div>
         <button class="btn-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-doors" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة الأبواب الذكية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-doors">0 سجل</span><button class="icon-btn" onclick="exportTable('doors')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('doors')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
@@ -467,6 +483,9 @@
         </div>
         <button class="btn-add" onclick="openCustodyForm()">＋ تسليم عهدة</button>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-custody" class="quick-search" placeholder="ابحث باسم الموظف، رمز الجهاز، أو المكتب/القسم...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة العهد الحالية</h3><span class="count" id="count-custody">0 عهدة</span></div>
         <div class="table-wrap">
@@ -486,6 +505,10 @@
           <p>كل قطعة تتبع فئة، ولكل فئة رقم يتولّد تلقائيًا أول ما تُستخدم. رمز القطعة = رقم الفئة + تسلسل داخلها.</p>
         </div>
         <button class="btn-add" onclick="openStockItemForm()">＋ إضافة قطعة</button>
+      </div>
+
+      <div class="field" style="max-width:460px;">
+        <input id="search-stock" class="quick-search" placeholder="ابحث برمز القطعة، الاسم، الفئة، أو المستودع...">
       </div>
 
       <div class="panel">
@@ -518,6 +541,9 @@
         </div>
         <button class="btn-add" onclick="openSecureForm()">＋ إضافة بيانات دخول</button>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-secure" class="quick-search" placeholder="ابحث بالجهة المرتبطة أو اسم المستخدم... (لا يبحث بكلمة المرور)">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>بيانات الدخول المخزّنة</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-secure">0 سجلات</span><button class="icon-btn" onclick="exportTable('secure')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('secure')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
@@ -538,6 +564,9 @@
         </div>
         <button class="btn-add" onclick="openUserForm()">＋ إضافة مستخدم</button>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-users" class="quick-search" placeholder="ابحث باسم المستخدم أو الصلاحية...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>الحسابات</h3><span class="count" id="count-users">0 حساب</span></div>
         <div class="table-wrap">
@@ -557,6 +586,9 @@
           <p>راجع طلبات الموظفين — قبول يضيفها مباشرة للنظام، إرجاع يرسلها للموظف يعدّلها، رفض يقفلها. هذا التبويب مخصص لمسؤول النظام فقط.</p>
         </div>
       </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-requests" class="quick-search" placeholder="ابحث بنوع الطلب أو مقدّم الطلب...">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>الطلبات</h3><span class="count" id="count-requests">0 طلب</span></div>
         <div class="table-wrap">
@@ -575,6 +607,9 @@
           <h2>طلبات الإتلاف</h2>
           <p>اسحب "♻️" من صف أي جهاز/قطعة بأي تبويب لطلب إتلافها. الموافقة تحذفها نهائيًا من قوائمها وتبقيها هنا فقط كأرشيف.</p>
         </div>
+      </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-disposal" class="quick-search" placeholder="ابحث بالقطعة، المصدر، أو مقدّم الطلب...">
       </div>
       <div class="panel">
         <div class="panel-head"><h3>الطلبات والأرشيف</h3><span class="count" id="count-disposal">0 طلب</span></div>
@@ -925,6 +960,25 @@ function canDispose(){ return currentRole==='admin' || currentAllowedPages.inclu
 const revealedSecure = new Set();
 const revealedEmpFields = new Set();
 
+/* ============ بحث سريع عام لكل الجداول ============ */
+const tableSearch = {};
+function recordMatchesQuery(record, q){
+  if(!q) return true;
+  const scan = (val) => {
+    if(val==null) return false;
+    if(typeof val==='string' || typeof val==='number' || typeof val==='boolean') return val.toString().toLowerCase().includes(q);
+    if(Array.isArray(val)) return val.some(scan);
+    if(typeof val==='object') return Object.values(val).some(scan);
+    return false;
+  };
+  return scan(record);
+}
+function bindQuickSearch(inputId, key, rerenderFn){
+  const el = document.getElementById(inputId);
+  if(!el) return;
+  el.addEventListener('input', ()=>{ tableSearch[key] = el.value.trim().toLowerCase(); rerenderFn(); });
+}
+
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function viewRow(label, value){
@@ -1050,10 +1104,12 @@ const ASSET_LABELS = { servers:'سيرفر', security:'جهاز أمان', doors
 
 function renderAssetTable(table){
   const tbody = document.getElementById('tbody-'+table);
-  const list = DATA[table] || [];
-  document.getElementById('count-'+table).textContent = list.length + ' سجل';
+  const all = DATA[table] || [];
+  const q = tableSearch[table];
+  const list = q ? all.filter(a=>recordMatchesQuery(a, q)) : all;
+  document.getElementById('count-'+table).textContent = q ? (list.length + ' من أصل ' + all.length) : (list.length + ' سجل');
   if(list.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">لا توجد سجلات بعد — اضغط "＋ إضافة"</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد سجلات بعد — اضغط "＋ إضافة"'}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(a=>`
@@ -1271,12 +1327,15 @@ function matchesDeviceFilter(d, f){
 }
 function renderDevices(){
   const tbody = document.getElementById('tbody-devices');
-  const list = deviceFilterCriteria ? DATA.devices.filter(d=>matchesDeviceFilter(d, deviceFilterCriteria)) : DATA.devices;
-  document.getElementById('count-devices').textContent = deviceFilterCriteria
+  let list = deviceFilterCriteria ? DATA.devices.filter(d=>matchesDeviceFilter(d, deviceFilterCriteria)) : DATA.devices;
+  const q = tableSearch['devices'];
+  if(q) list = list.filter(d=>recordMatchesQuery(d, q));
+  const narrowed = deviceFilterCriteria || q;
+  document.getElementById('count-devices').textContent = narrowed
     ? (list.length + ' من أصل ' + DATA.devices.length)
     : (list.length + ' سجل');
   if(list.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">${deviceFilterCriteria ? 'لا توجد أجهزة مطابقة لهذه المعايير' : 'لا توجد أجهزة بعد — اضغط "＋ إضافة جهاز"'}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">${narrowed ? 'لا توجد أجهزة مطابقة' : 'لا توجد أجهزة بعد — اضغط "＋ إضافة جهاز"'}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(deviceRowHtml).join('');
@@ -1285,10 +1344,12 @@ function renderDevices(){
 /* ============ العهد: تسليم/استرجاع جهاز لموظف ============ */
 function renderCustody(){
   const tbody = document.getElementById('tbody-custody');
-  const holders = DATA.employees.filter(e=>e.device);
-  document.getElementById('count-custody').textContent = holders.length + ' عهدة';
+  const all = DATA.employees.filter(e=>e.device);
+  const q = tableSearch['custody'];
+  const holders = q ? all.filter(e=>recordMatchesQuery(e, q)) : all;
+  document.getElementById('count-custody').textContent = q ? (holders.length + ' من أصل ' + all.length) : (holders.length + ' عهدة');
   if(holders.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">ما فيه عهد حالية — اضغط "＋ تسليم عهدة"</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">${q ? 'لا توجد نتائج مطابقة' : 'ما فيه عهد حالية — اضغط "＋ تسليم عهدة"'}</td></tr>`;
     return;
   }
   tbody.innerHTML = holders.map(e=>{
@@ -1386,12 +1447,14 @@ function renderStockCategories(){
 function renderStock(){
   renderStockCategories();
   const tbody = document.getElementById('tbody-stock');
-  document.getElementById('count-stock').textContent = DATA.stock_items.length + ' قطعة';
-  if(DATA.stock_items.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد قطع بعد — اضغط "＋ إضافة قطعة"</td></tr>`;
+  const q = tableSearch['stock'];
+  const list = q ? DATA.stock_items.filter(i=>recordMatchesQuery(i, q)) : DATA.stock_items;
+  document.getElementById('count-stock').textContent = q ? (list.length + ' من أصل ' + DATA.stock_items.length) : (list.length + ' قطعة');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد قطع بعد — اضغط "＋ إضافة قطعة"'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.stock_items.map(item=>`
+  tbody.innerHTML = list.map(item=>`
     <tr>
       <td class="mono">${escapeHtml(item.code)}</td>
       <td>${escapeHtml(item.name)}</td>
@@ -1740,12 +1803,14 @@ function renderMyRequests(){
 function renderRequestsAdmin(){
   const tbody = document.getElementById('tbody-requests');
   if(!tbody) return;
-  document.getElementById('count-requests').textContent = DATA.requests.length + ' طلب';
-  if(DATA.requests.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">لا توجد طلبات بعد</td></tr>`;
+  const q = tableSearch['requests'];
+  const list = q ? DATA.requests.filter(r=>recordMatchesQuery(r, q) || requestTypeLabel(r).toLowerCase().includes(q)) : DATA.requests;
+  document.getElementById('count-requests').textContent = q ? (list.length + ' من أصل ' + DATA.requests.length) : (list.length + ' طلب');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.requests.slice().reverse().map(r=>`
+  tbody.innerHTML = list.slice().reverse().map(r=>`
     <tr>
       <td>${escapeHtml(requestTypeLabel(r))}</td>
       <td>${escapeHtml(r.submittedBy)}</td>
@@ -1847,12 +1912,14 @@ async function submitDisposalRequest(){
 function renderDisposal(){
   const tbody = document.getElementById('tbody-disposal');
   if(!tbody) return;
-  document.getElementById('count-disposal').textContent = DATA.disposal_requests.length + ' طلب';
-  if(DATA.disposal_requests.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">لا توجد طلبات إتلاف بعد</td></tr>`;
+  const q = tableSearch['disposal'];
+  const list = q ? DATA.disposal_requests.filter(r=>recordMatchesQuery(r, q) || (DISPOSAL_SOURCE_LABELS[r.sourceTable]||'').toLowerCase().includes(q)) : DATA.disposal_requests;
+  document.getElementById('count-disposal').textContent = q ? (list.length + ' من أصل ' + DATA.disposal_requests.length) : (list.length + ' طلب');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد طلبات إتلاف بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.disposal_requests.slice().reverse().map(r=>{
+  tbody.innerHTML = list.slice().reverse().map(r=>{
     const snap = r.snapshot || {};
     const label = snap.code || snap.name || '—';
     return `
@@ -1920,12 +1987,14 @@ async function decideDisposal(id, decision){
 /* ============ عرض: السويتشات ============ */
 function renderSwitches(){
   const tbody = document.getElementById('tbody-switches');
-  document.getElementById('count-switches').textContent = DATA.switches.length + ' أجهزة';
-  if(DATA.switches.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد سويتشات بعد</td></tr>`;
+  const q = tableSearch['network'];
+  const list = q ? DATA.switches.filter(s=>recordMatchesQuery(s, q)) : DATA.switches;
+  document.getElementById('count-switches').textContent = q ? (list.length + ' من أصل ' + DATA.switches.length) : (list.length + ' أجهزة');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد سويتشات بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.switches.map(s=>`
+  tbody.innerHTML = list.map(s=>`
     <tr>
       <td class="mono">${escapeHtml(s.name)}</td>
       <td>${escapeHtml(s.location)||'—'}</td>
@@ -1944,12 +2013,14 @@ function renderSwitches(){
 /* ============ عرض: الراوترات ============ */
 function renderRouters(){
   const tbody = document.getElementById('tbody-routers');
-  document.getElementById('count-routers').textContent = DATA.routers.length + ' أجهزة';
-  if(DATA.routers.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد راوترات بعد</td></tr>`;
+  const q = tableSearch['network'];
+  const list = q ? DATA.routers.filter(r=>recordMatchesQuery(r, q)) : DATA.routers;
+  document.getElementById('count-routers').textContent = q ? (list.length + ' من أصل ' + DATA.routers.length) : (list.length + ' أجهزة');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد راوترات بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.routers.map(r=>`
+  tbody.innerHTML = list.map(r=>`
     <tr>
       <td class="mono">${escapeHtml(r.name)}</td>
       <td>${escapeHtml(r.location)||'—'}</td>
@@ -1968,12 +2039,14 @@ function renderRouters(){
 /* ============ عرض: القسم الآمن ============ */
 function renderSecure(){
   const tbody = document.getElementById('tbody-secure');
-  document.getElementById('count-secure').textContent = DATA.secure.length + ' سجلات';
-  if(DATA.secure.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">لا توجد بيانات دخول بعد</td></tr>`;
+  const q = tableSearch['secure'];
+  const list = q ? DATA.secure.filter(s=>[s.linked, s.user, s.notes].some(v=>(v||'').toString().toLowerCase().includes(q))) : DATA.secure;
+  document.getElementById('count-secure').textContent = q ? (list.length + ' من أصل ' + DATA.secure.length) : (list.length + ' سجلات');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد بيانات دخول بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.secure.map(s=>`
+  tbody.innerHTML = list.map(s=>`
     <tr>
       <td class="mono">${escapeHtml(s.linked)}</td>
       <td class="mono">${escapeHtml(s.user)||'—'}</td>
@@ -1994,13 +2067,15 @@ function toggleSecure(id){
 /* ============ عرض/إدارة: المستخدمون ============ */
 function renderUsers(){
   const tbody = document.getElementById('tbody-users');
-  document.getElementById('count-users').textContent = DATA.users.length + ' حساب';
-  if(DATA.users.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">لا توجد حسابات بعد</td></tr>`;
+  const q = tableSearch['users'];
+  const withPagesText = DATA.users.map(u=>({ u, pagesText: u.role==='admin' ? 'كل التبويبات' : (u.allowedPages.map(p=>PAGE_LABELS[p]||p).join('، ') || 'بدون تبويبات') }));
+  const list = q ? withPagesText.filter(({u, pagesText})=>[u.username, u.role, pagesText].some(v=>(v||'').toString().toLowerCase().includes(q))) : withPagesText;
+  document.getElementById('count-users').textContent = q ? (list.length + ' من أصل ' + DATA.users.length) : (list.length + ' حساب');
+  if(list.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">${q ? 'لا توجد نتائج مطابقة' : 'لا توجد حسابات بعد'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.users.map(u=>{
-    const pagesText = u.role==='admin' ? 'كل التبويبات' : (u.allowedPages.map(p=>PAGE_LABELS[p]||p).join('، ') || 'بدون تبويبات');
+  tbody.innerHTML = list.map(({u, pagesText})=>{
     return `
     <tr>
       <td class="mono">${escapeHtml(u.username)}</td>
@@ -2549,6 +2624,17 @@ function renderSearchResults(query){
 }
 document.getElementById('search-input').addEventListener('input', (e)=> renderSearchResults(e.target.value));
 document.getElementById('emp-search').addEventListener('input', (e)=>{ employeeSearchQuery = e.target.value; renderEmployees(); });
+bindQuickSearch('search-devices', 'devices', renderDevices);
+bindQuickSearch('search-network', 'network', ()=>{ renderSwitches(); renderRouters(); });
+bindQuickSearch('search-servers', 'servers', ()=>renderAssetTable('servers'));
+bindQuickSearch('search-security', 'security', ()=>renderAssetTable('security'));
+bindQuickSearch('search-doors', 'doors', ()=>renderAssetTable('doors'));
+bindQuickSearch('search-custody', 'custody', renderCustody);
+bindQuickSearch('search-stock', 'stock', renderStock);
+bindQuickSearch('search-secure', 'secure', renderSecure);
+bindQuickSearch('search-users', 'users', renderUsers);
+bindQuickSearch('search-requests', 'requests', renderRequestsAdmin);
+bindQuickSearch('search-disposal', 'disposal', renderDisposal);
 
 /* ============ تصفية الموظفين المتقدمة ============ */
 function openEmployeeFilter(){
