@@ -90,7 +90,7 @@ def allowed_pages_for(account):
     return ASSIGNABLE_PAGES if account['role'] == 'admin' else account.get('allowedPages', [])
 
 
-TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'stock_items', 'stock_transactions']
+TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'warehouses', 'stock_categories', 'stock_items']
 ADMIN_ONLY_TABLES = {'secure'}
 
 # ------------------------------------------------------------------
@@ -130,13 +130,16 @@ TABLE_SCHEMAS = {
     'secure': [
         ('linked', 'مرتبط بـ'), ('user', 'اسم المستخدم'), ('pass', 'كلمة المرور'), ('notes', 'ملاحظات'),
     ],
-    'stock_items': [
-        ('name', 'اسم الصنف'), ('category', 'التصنيف'), ('unit', 'وحدة القياس'),
-        ('minThreshold', 'الحد الأدنى للتنبيه'), ('notes', 'ملاحظات'),
+    'warehouses': [
+        ('name', 'اسم المستودع'),
     ],
-    'stock_transactions': [
-        ('item', 'اسم الصنف'), ('type', 'نوع الحركة'), ('quantity', 'الكمية'),
-        ('date', 'التاريخ'), ('party', 'من / إلى'), ('notes', 'ملاحظات'),
+    'stock_categories': [
+        ('name', 'اسم الفئة'), ('number', 'رقم الفئة'),
+    ],
+    'stock_items': [
+        ('code', 'رمز القطعة'), ('name', 'اسم القطعة'), ('categoryName', 'الفئة'),
+        ('categoryNumber', 'رقم الفئة'), ('warehouse', 'المستودع'),
+        ('quantity', 'الكمية'), ('status', 'الحالة'),
     ],
 }
 
@@ -393,6 +396,17 @@ def delete_user(username):
     return jsonify({'success': True})
 
 
+DEFAULT_WAREHOUSES = ['مستودع المحفوظات', 'مستودع وحدة التقنية']
+
+
+def load_warehouses():
+    warehouses = load_table('warehouses')
+    if not warehouses:
+        warehouses = [{'id': uuid.uuid4().hex, 'name': name} for name in DEFAULT_WAREHOUSES]
+        save_table('warehouses', warehouses)
+    return warehouses
+
+
 @app.route('/api/<table>', methods=['GET'])
 def get_table(table):
     if table not in TABLES:
@@ -400,6 +414,8 @@ def get_table(table):
     err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
     if err:
         return err
+    if table == 'warehouses':
+        return jsonify(load_warehouses())
     return jsonify(load_table(table))
 
 
@@ -500,6 +516,63 @@ def assign_custody():
     save_table('employees', employees)
     save_table('devices', devices)
     return jsonify({'success': True, 'employee': employee, 'device': new_device})
+
+
+# ------------------------------------------------------------------
+# المخزون — إدخال قطعة جديدة: يبحث عن الفئة بالاسم، يولّد رقم فئة
+# جديد لو أول مرة، ويولّد رمز القطعة من (رقم الفئة-تسلسل)
+# ------------------------------------------------------------------
+@app.route('/api/stock/items', methods=['POST'])
+def create_stock_item():
+    err = require_login()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    warehouse = (body.get('warehouse') or '').strip()
+    category_name = (body.get('categoryName') or '').strip()
+    name = (body.get('name') or '').strip()
+    quantity = body.get('quantity')
+    status = (body.get('status') or 'جديد').strip()
+
+    if not warehouse:
+        return jsonify({'error': 'اختر المستودع'}), 400
+    if not category_name:
+        return jsonify({'error': 'اكتب اسم الفئة'}), 400
+    if not name:
+        return jsonify({'error': 'اسم القطعة إجباري'}), 400
+
+    categories = load_table('stock_categories')
+    category = next((c for c in categories if c.get('name', '').strip() == category_name), None)
+    if not category:
+        next_number = max([c.get('number', 9999) for c in categories], default=9999) + 1
+        category = {'id': uuid.uuid4().hex, 'name': category_name, 'number': next_number}
+        categories.append(category)
+        save_table('stock_categories', categories)
+
+    items = load_table('stock_items')
+    sequences = []
+    for i in items:
+        if i.get('categoryNumber') == category['number'] and '-' in (i.get('code') or ''):
+            try:
+                sequences.append(int(i['code'].rsplit('-', 1)[1]))
+            except ValueError:
+                pass
+    next_seq = (max(sequences) + 1) if sequences else 1
+
+    item = {
+        'id': uuid.uuid4().hex,
+        'code': f"{category['number']}-{next_seq:03d}",
+        'name': name,
+        'warehouse': warehouse,
+        'categoryName': category['name'],
+        'categoryNumber': category['number'],
+        'quantity': quantity,
+        'status': status,
+    }
+    items.append(item)
+    save_table('stock_items', items)
+    return jsonify(item)
 
 
 # ------------------------------------------------------------------

@@ -329,18 +329,26 @@
         <div>
           <div class="eyebrow">📦 المخزون</div>
           <h2>المخزون</h2>
-          <p>الكمية الحالية لكل صنف تُحسب تلقائيًا من سجل الحركة (وارد وصادر) — ما تُعدَّل مباشرة.</p>
+          <p>كل قطعة تتبع فئة، ولكل فئة رقم يتولّد تلقائيًا أول ما تُستخدم. رمز القطعة = رقم الفئة + تسلسل داخلها.</p>
         </div>
-        <div class="head-actions">
-          <button class="btn-ghost" onclick="openStockTxnForm()">↔ تسجيل حركة</button>
-          <button class="btn-add" onclick="openStockItemForm()">＋ إضافة صنف</button>
-        </div>
+        <button class="btn-add" onclick="openStockItemForm()">＋ إضافة قطعة</button>
       </div>
+
       <div class="panel">
-        <div class="panel-head"><h3>أصناف المخزون</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-stock">0 صنف</span><button class="icon-btn" onclick="exportTable('stock_items')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('stock_items')" title="استيراد Excel">⬆</button></div></div>
+        <div class="panel-head"><h3>الفئات</h3><span class="count" id="count-stockcategories">0 فئة</span></div>
         <div class="table-wrap">
         <table>
-          <thead><tr><th>اسم الصنف</th><th>التصنيف</th><th>الكمية الحالية</th><th>الوحدة</th><th>الحد الأدنى</th><th>الحالة</th><th></th></tr></thead>
+          <thead><tr><th>اسم الفئة</th><th>رقم الفئة</th></tr></thead>
+          <tbody id="tbody-stockcategories"></tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>القطع</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-stock">0 قطعة</span><button class="icon-btn" onclick="exportTable('stock_items')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('stock_items')" title="استيراد Excel">⬆</button></div></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>رمز القطعة</th><th>اسم القطعة</th><th>الفئة</th><th>المستودع</th><th>الكمية</th><th>الحالة</th><th></th></tr></thead>
           <tbody id="tbody-stock"></tbody>
         </table>
         </div>
@@ -668,46 +676,26 @@
   </div>
 </div>
 
-<!-- ===== نموذج إضافة/تعديل صنف مخزون ===== -->
+<!-- ===== نموذج إضافة/تعديل قطعة مخزون ===== -->
 <div class="overlay" id="modal-stockitem">
   <div class="modal">
-    <div class="modal-head"><h3 id="stockitem-modal-title">＋ إضافة صنف</h3><button class="close" onclick="closeModal('modal-stockitem')">✕</button></div>
+    <div class="modal-head"><h3 id="stockitem-modal-title">＋ إضافة قطعة</h3><button class="close" onclick="closeModal('modal-stockitem')">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="stockitem-id">
-      <div><label>اسم الصنف <span class="req">*</span></label><input id="stockitem-name" placeholder="مثال: ماوس لاسلكي"></div>
-      <div><label>التصنيف (اختياري)</label><input id="stockitem-category" placeholder="مثال: ملحقات"></div>
-      <div><label>وحدة القياس</label><input id="stockitem-unit" placeholder="مثال: قطعة" value="قطعة"></div>
-      <div><label>الحد الأدنى للتنبيه</label><input id="stockitem-min" placeholder="مثال: 5"></div>
-      <div><label>ملاحظات (اختياري)</label><input id="stockitem-notes" placeholder="أي ملاحظة"></div>
-    </div>
-    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stockitem')">إلغاء</button><button class="btn-save" onclick="saveStockItem()">حفظ الصنف</button></div>
-  </div>
-</div>
-
-<!-- ===== نموذج تسجيل حركة مخزون ===== -->
-<div class="overlay" id="modal-stocktxn">
-  <div class="modal">
-    <div class="modal-head"><h3>↔ تسجيل حركة مخزون</h3><button class="close" onclick="closeModal('modal-stocktxn')">✕</button></div>
-    <div class="modal-body">
-      <div><label>الصنف <span class="req">*</span></label><select id="stocktxn-item"><option value="">اختر الصنف</option></select></div>
-      <div><label>نوع الحركة</label>
-        <select id="stocktxn-type"><option value="وارد">وارد (إضافة للمخزون)</option><option value="صادر">صادر (صرف من المخزون)</option></select>
+      <div id="stockitem-code-wrap" style="display:none;"><label>رمز القطعة</label><input id="stockitem-code" disabled></div>
+      <div><label>المستودع <span class="req">*</span></label><select id="stockitem-warehouse"></select></div>
+      <div>
+        <label>الفئة <span class="req">*</span></label>
+        <input id="stockitem-category" list="stockitem-category-list" placeholder="مثال: طابعات">
+        <datalist id="stockitem-category-list"></datalist>
       </div>
-      <div><label>الكمية <span class="req">*</span></label><input id="stocktxn-quantity" placeholder="مثال: 10"></div>
-      <div><label>التاريخ</label><input type="date" id="stocktxn-date"></div>
-      <div><label>من / إلى (اختياري)</label><input id="stocktxn-party" placeholder="اسم المورد أو الموظف المستلم"></div>
-      <div><label>ملاحظات (اختياري)</label><input id="stocktxn-notes" placeholder="أي ملاحظة"></div>
+      <div><label>اسم القطعة <span class="req">*</span></label><input id="stockitem-name" placeholder="مثال: طابعة HP LaserJet 1020"></div>
+      <div><label>الكمية <span class="req">*</span></label><input id="stockitem-quantity" placeholder="مثال: 5"></div>
+      <div><label>الحالة</label>
+        <select id="stockitem-status"><option>جديد</option><option>مستعمل</option><option>تالف</option></select>
+      </div>
     </div>
-    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stocktxn')">إلغاء</button><button class="btn-save" onclick="saveStockTxn()">حفظ الحركة</button></div>
-  </div>
-</div>
-
-<!-- ===== نافذة سجل حركة صنف ===== -->
-<div class="overlay" id="modal-stockhistory">
-  <div class="modal">
-    <div class="modal-head"><h3 id="stockhistory-title">📜 سجل الحركة</h3><button class="close" onclick="closeModal('modal-stockhistory')">✕</button></div>
-    <div class="modal-body" id="stockhistory-body"></div>
-    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stockhistory')">إغلاق</button></div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-stockitem')">إلغاء</button><button class="btn-save" onclick="saveStockItem()">حفظ القطعة</button></div>
   </div>
 </div>
 
@@ -810,7 +798,7 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], stock_items:[], stock_transactions:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[] };
 let currentRole = null;
 let currentAllowedPages = [];
 const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors'];
@@ -908,14 +896,14 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 });
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure, users, stock_items, stock_transactions] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
     apiGet('servers'), apiGet('security'), apiGet('doors'),
     currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
     currentRole==='admin' ? apiGet('users') : Promise.resolve([]),
-    apiGet('stock_items'), apiGet('stock_transactions')
+    apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items')
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, stock_items, stock_transactions };
+  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items };
   renderAll();
 }
 
@@ -1261,131 +1249,96 @@ async function releaseCustody(employeeId){
 }
 document.getElementById('custody-employee').addEventListener('change', (e)=> fillCustodyDeviceOptions(e.target.value));
 
-/* ============ المخزون: أصناف وحركة (وارد/صادر) ============ */
-function stockQuantity(itemName){
-  return DATA.stock_transactions
-    .filter(t=>t.item===itemName)
-    .reduce((sum,t)=> sum + (t.type==='وارد' ? Number(t.quantity)||0 : -(Number(t.quantity)||0)), 0);
+/* ============ المخزون: مستودعات / فئات (ترقيم تلقائي) / قطع ============ */
+const STOCK_STATUS_MAP = { 'جديد':'ok', 'مستعمل':'warn', 'تالف':'off' };
+
+function renderStockCategories(){
+  const tbody = document.getElementById('tbody-stockcategories');
+  document.getElementById('count-stockcategories').textContent = DATA.stock_categories.length + ' فئة';
+  if(DATA.stock_categories.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="2">لا توجد فئات بعد — تُنشأ تلقائيًا أول ما تضيف قطعة بفئة جديدة</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DATA.stock_categories.slice().sort((a,b)=>a.number-b.number).map(c=>`
+    <tr><td>${escapeHtml(c.name)}</td><td class="mono">${c.number}</td></tr>`).join('');
 }
 
 function renderStock(){
+  renderStockCategories();
   const tbody = document.getElementById('tbody-stock');
-  document.getElementById('count-stock').textContent = DATA.stock_items.length + ' صنف';
+  document.getElementById('count-stock').textContent = DATA.stock_items.length + ' قطعة';
   if(DATA.stock_items.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد أصناف بعد — اضغط "＋ إضافة صنف"</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">لا توجد قطع بعد — اضغط "＋ إضافة قطعة"</td></tr>`;
     return;
   }
-  tbody.innerHTML = DATA.stock_items.map(item=>{
-    const qty = stockQuantity(item.name);
-    const min = Number(item.minThreshold)||0;
-    const low = min>0 && qty<=min;
-    const statusBadgeHtml = low
-      ? `<span class="badge off"><span class="dot"></span>منخفض</span>`
-      : `<span class="badge ok"><span class="dot"></span>متوفر</span>`;
-    return `
+  tbody.innerHTML = DATA.stock_items.map(item=>`
     <tr>
+      <td class="mono">${escapeHtml(item.code)}</td>
       <td>${escapeHtml(item.name)}</td>
-      <td>${escapeHtml(item.category)||'—'}</td>
-      <td class="mono">${qty}</td>
-      <td>${escapeHtml(item.unit)||'—'}</td>
-      <td class="mono">${min||'—'}</td>
-      <td>${statusBadgeHtml}</td>
+      <td>${escapeHtml(item.categoryName)} <span class="mono" style="color:var(--muted);">(${item.categoryNumber})</span></td>
+      <td>${escapeHtml(item.warehouse)}</td>
+      <td class="mono">${escapeHtml(item.quantity)}</td>
+      <td>${statusBadge(item.status, STOCK_STATUS_MAP)}</td>
       <td><div class="row-actions">
-        <button class="icon-btn" onclick="openStockHistory('${escapeHtml(item.name)}')" title="سجل الحركة">📜</button>
-        <button class="icon-btn" onclick="openStockTxnForm('${escapeHtml(item.name)}')" title="تسجيل حركة">↔</button>
         <button class="icon-btn" onclick="openStockItemForm('${item.id}')">✎</button>
         <button class="icon-btn" onclick="deleteRecord('stock_items','${item.id}')">🗑</button>
       </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function fillStockItemOptions(currentValue){
-  const sel = document.getElementById('stocktxn-item');
-  sel.innerHTML = '<option value="">اختر الصنف</option>' +
-    DATA.stock_items.map(i=>`<option value="${escapeHtml(i.name)}" ${i.name===currentValue?'selected':''}>${escapeHtml(i.name)}</option>`).join('');
+    </tr>`).join('');
 }
 
 function openStockItemForm(id){
   const item = id ? DATA.stock_items.find(x=>x.id===id) : null;
-  document.getElementById('stockitem-modal-title').textContent = item ? '✎ تعديل صنف' : '＋ إضافة صنف';
+  document.getElementById('stockitem-modal-title').textContent = item ? '✎ تعديل قطعة' : '＋ إضافة قطعة';
   document.getElementById('stockitem-id').value = item ? item.id : '';
+
+  const whSel = document.getElementById('stockitem-warehouse');
+  whSel.innerHTML = DATA.warehouses.map(w=>`<option value="${escapeHtml(w.name)}" ${item&&w.name===item.warehouse?'selected':''}>${escapeHtml(w.name)}</option>`).join('');
+
+  document.getElementById('stockitem-category-list').innerHTML =
+    DATA.stock_categories.map(c=>`<option value="${escapeHtml(c.name)}">`).join('');
+  document.getElementById('stockitem-category').value = item ? item.categoryName : '';
+  document.getElementById('stockitem-category').disabled = !!item;
+
+  document.getElementById('stockitem-code-wrap').style.display = item ? 'block' : 'none';
+  document.getElementById('stockitem-code').value = item ? item.code : '';
+
   document.getElementById('stockitem-name').value = item ? item.name : '';
-  document.getElementById('stockitem-category').value = item ? (item.category||'') : '';
-  document.getElementById('stockitem-unit').value = item ? (item.unit||'') : 'قطعة';
-  document.getElementById('stockitem-min').value = item ? (item.minThreshold||'') : '';
-  document.getElementById('stockitem-notes').value = item ? (item.notes||'') : '';
+  document.getElementById('stockitem-quantity').value = item ? item.quantity : '';
+  document.getElementById('stockitem-status').value = item ? item.status : 'جديد';
   openModal('modal-stockitem');
 }
 
 async function saveStockItem(){
+  const id = document.getElementById('stockitem-id').value;
+  const warehouse = document.getElementById('stockitem-warehouse').value;
   const name = document.getElementById('stockitem-name').value.trim();
-  if(!name){ showToast('⚠ اسم الصنف إجباري'); return; }
-  const record = {
-    id: document.getElementById('stockitem-id').value || undefined,
-    name,
-    category: document.getElementById('stockitem-category').value.trim(),
-    unit: document.getElementById('stockitem-unit').value.trim(),
-    minThreshold: document.getElementById('stockitem-min').value.trim(),
-    notes: document.getElementById('stockitem-notes').value.trim(),
-  };
-  const saved = await apiSave('stock_items', record);
-  if(!saved) return;
-  closeModal('modal-stockitem'); await loadAll(); showToast('تم حفظ الصنف');
-}
+  const quantity = document.getElementById('stockitem-quantity').value.trim();
+  const status = document.getElementById('stockitem-status').value;
+  if(!warehouse){ showToast('⚠ اختر المستودع'); return; }
+  if(!name){ showToast('⚠ اسم القطعة إجباري'); return; }
+  if(quantity===''||isNaN(Number(quantity))||Number(quantity)<0){ showToast('⚠ اكتب كمية صحيحة'); return; }
 
-function openStockTxnForm(itemName){
-  fillStockItemOptions(itemName || '');
-  document.getElementById('stocktxn-type').value = 'وارد';
-  document.getElementById('stocktxn-quantity').value = '';
-  document.getElementById('stocktxn-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('stocktxn-party').value = '';
-  document.getElementById('stocktxn-notes').value = '';
-  openModal('modal-stocktxn');
-}
-
-async function saveStockTxn(){
-  const item = document.getElementById('stocktxn-item').value;
-  if(!item){ showToast('⚠ اختر الصنف'); return; }
-  const quantity = Number(document.getElementById('stocktxn-quantity').value);
-  if(!quantity || quantity<=0){ showToast('⚠ اكتب كمية صحيحة'); return; }
-  const record = {
-    item,
-    type: document.getElementById('stocktxn-type').value,
-    quantity,
-    date: document.getElementById('stocktxn-date').value || new Date().toISOString().slice(0,10),
-    party: document.getElementById('stocktxn-party').value.trim(),
-    notes: document.getElementById('stocktxn-notes').value.trim(),
-  };
-  const saved = await apiSave('stock_transactions', record);
-  if(!saved) return;
-  closeModal('modal-stocktxn'); await loadAll(); showToast('تم تسجيل الحركة');
-}
-
-function openStockHistory(itemName){
-  document.getElementById('stockhistory-title').textContent = '📜 سجل حركة: ' + itemName;
-  const txns = DATA.stock_transactions.filter(t=>t.item===itemName).slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
-  const body = document.getElementById('stockhistory-body');
-  let html = `<div style="margin-bottom:10px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; font-size:13.5px;">
-    <span style="color:var(--muted);">الكمية الحالية:</span> <b>${stockQuantity(itemName)}</b>
-  </div>`;
-  if(txns.length===0){
-    html += `<div style="color:var(--muted); font-size:13px;">لا توجد حركة مسجّلة لهذا الصنف.</div>`;
+  if(id){
+    const existing = DATA.stock_items.find(x=>x.id===id);
+    const record = { ...existing, warehouse, name, quantity:Number(quantity), status };
+    const saved = await apiSave('stock_items', record);
+    if(!saved) return;
   } else {
-    html += `<div style="display:flex; flex-direction:column; gap:8px;">` +
-      txns.map(t=>`
-        <div style="padding:9px 12px; background:var(--bg); border:1px solid var(--line); border-radius:7px; font-size:13px;">
-          <div style="display:flex; justify-content:space-between;">
-            <span class="badge ${t.type==='وارد'?'ok':'warn'}"><span class="dot"></span>${escapeHtml(t.type)} — ${escapeHtml(t.quantity)}</span>
-            <span class="mono" style="color:var(--muted);">${escapeHtml(t.date)||'—'}</span>
-          </div>
-          ${t.party ? `<div style="margin-top:6px; color:var(--muted);">من/إلى: ${escapeHtml(t.party)}</div>` : ''}
-          ${t.notes ? `<div style="margin-top:4px; color:var(--muted);">${escapeHtml(t.notes)}</div>` : ''}
-        </div>`).join('') +
-      `</div>`;
+    const categoryName = document.getElementById('stockitem-category').value.trim();
+    if(!categoryName){ showToast('⚠ اكتب اسم الفئة'); return; }
+    try{
+      const res = await fetch('/api/stock/items', {
+        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+        body: JSON.stringify({ warehouse, categoryName, name, quantity:Number(quantity), status }),
+      });
+      if(!res.ok){
+        const errBody = await res.json().catch(()=>null);
+        showToast(errBody && errBody.error ? '⚠ ' + errBody.error : '⚠ تعذّر إضافة القطعة');
+        return;
+      }
+    }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); return; }
   }
-  body.innerHTML = html;
-  openModal('modal-stockhistory');
+  closeModal('modal-stockitem'); await loadAll(); showToast('تم حفظ القطعة');
 }
 
 /* ============ عرض: السويتشات ============ */
