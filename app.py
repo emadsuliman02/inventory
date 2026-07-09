@@ -62,7 +62,7 @@ ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
 # متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
 ASSIGNABLE_PAGES = [
     'search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors',
-    'submitrequest', 'requests',
+    'submitrequest', 'requests', 'disposal',
 ]
 
 DEFAULT_ACCOUNTS = {
@@ -93,7 +93,17 @@ def allowed_pages_for(account):
     return ASSIGNABLE_PAGES if account['role'] == 'admin' else account.get('allowedPages', [])
 
 
-TABLES = ['employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure', 'warehouses', 'stock_categories', 'stock_items', 'requests']
+TABLES = [
+    'employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure',
+    'warehouses', 'stock_categories', 'stock_items', 'requests', 'disposal_requests',
+]
+
+# الجداول اللي يجوز طلب إتلاف قطعة منها
+DISPOSABLE_TABLES = {'devices', 'servers', 'security', 'doors', 'switches', 'routers', 'stock_items'}
+DISPOSAL_SOURCE_LABELS = {
+    'devices': 'جهاز كمبيوتر', 'servers': 'سيرفر', 'security': 'جهاز أمان', 'doors': 'باب ذكي',
+    'switches': 'سويتش', 'routers': 'راوتر', 'stock_items': 'قطعة مخزون',
+}
 ADMIN_ONLY_TABLES = {'secure'}
 
 # الطلبات — الجدول الهدف اللي يتحول له الطلب عند القبول (سويتش/راوتر يتحدد حسب networkSubtype)
@@ -439,6 +449,11 @@ def load_warehouses():
 def get_table(table):
     if table not in TABLES:
         return jsonify({'error': 'جدول غير معروف'}), 404
+    if table == 'disposal_requests':
+        err = require_page('disposal')
+        if err:
+            return err
+        return jsonify(load_table('disposal_requests'))
     err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
     if err:
         return err
@@ -458,6 +473,8 @@ def upsert_record(table):
         return jsonify({'error': 'جدول غير معروف'}), 404
     if table == 'requests':
         return jsonify({'error': 'استخدم /api/requests/submit لتقديم الطلبات'}), 400
+    if table == 'disposal_requests':
+        return jsonify({'error': 'استخدم /api/disposal/request لتقديم طلبات الإتلاف'}), 400
     err = require_admin() if table in ADMIN_ONLY_TABLES else require_login()
     if err:
         return err
@@ -488,7 +505,12 @@ def upsert_record(table):
 def delete_record(table, record_id):
     if table not in TABLES:
         return jsonify({'error': 'جدول غير معروف'}), 404
-    err = require_admin() if (table in ADMIN_ONLY_TABLES or table == 'requests') else require_login()
+    if table == 'disposal_requests':
+        err = require_page('disposal')
+    elif table in ADMIN_ONLY_TABLES or table == 'requests':
+        err = require_admin()
+    else:
+        err = require_login()
     if err:
         return err
 
@@ -714,6 +736,82 @@ def decide_request(request_id):
 
 
 # ------------------------------------------------------------------
+# طلبات الإتلاف — تسحب قطعة من أي جدول أصول، وموافقة المسؤول تحذفها
+# نهائيًا من جدولها الأصلي وتخليها فقط بأرشيف طلبات الإتلاف
+# ------------------------------------------------------------------
+@app.route('/api/disposal/request', methods=['POST'])
+def create_disposal_request():
+    err = require_page('disposal')
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    source_table = body.get('sourceTable')
+    source_id = body.get('sourceId')
+    reason = (body.get('reason') or '').strip()
+
+    if source_table not in DISPOSABLE_TABLES:
+        return jsonify({'error': 'هذا النوع غير قابل لطلب الإتلاف'}), 400
+
+    records = load_table(source_table)
+    item = next((r for r in records if r.get('id') == source_id), None)
+    if not item:
+        return jsonify({'error': 'القطعة غير موجودة'}), 404
+
+    disposal_list = load_table('disposal_requests')
+    new_req = {
+        'id': uuid.uuid4().hex,
+        'sourceTable': source_table,
+        'sourceId': source_id,
+        'snapshot': item,
+        'reason': reason,
+        'requestedBy': session['username'],
+        'requestedAt': date.today().isoformat(),
+        'status': 'معلق',
+        'decidedAt': None,
+        'decidedBy': None,
+        'decisionNote': '',
+    }
+    disposal_list.append(new_req)
+    save_table('disposal_requests', disposal_list)
+    return jsonify(new_req)
+
+
+@app.route('/api/disposal/<request_id>/decision', methods=['POST'])
+def decide_disposal(request_id):
+    err = require_page('disposal')
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    decision = body.get('decision')
+    note = (body.get('note') or '').strip()
+    if decision not in ('approve', 'reject'):
+        return jsonify({'error': 'إجراء غير معروف'}), 400
+
+    disposal_list = load_table('disposal_requests')
+    req = next((r for r in disposal_list if r.get('id') == request_id), None)
+    if not req:
+        return jsonify({'error': 'الطلب غير موجود'}), 404
+    if req.get('status') != 'معلق':
+        return jsonify({'error': 'تم اتخاذ قرار بهذا الطلب مسبقًا'}), 400
+
+    if decision == 'approve':
+        records = load_table(req['sourceTable'])
+        records = [r for r in records if r.get('id') != req['sourceId']]
+        save_table(req['sourceTable'], records)
+        req['status'] = 'تمت الموافقة'
+    else:
+        req['status'] = 'تم الرفض'
+
+    req['decidedAt'] = date.today().isoformat()
+    req['decidedBy'] = session['username']
+    req['decisionNote'] = note
+    save_table('disposal_requests', disposal_list)
+    return jsonify(req)
+
+
+# ------------------------------------------------------------------
 # تصدير PDF (بطاقة موظف / بطاقة جهاز / إيصال عهدة)
 # ------------------------------------------------------------------
 PDF_FONT_REGULAR = r'C:\Windows\Fonts\tahoma.ttf'
@@ -928,6 +1026,60 @@ def custody_pdf(employee_id):
     pdf.cell(60, 7, rtl('توقيع مسؤول تقنية المعلومات'), align='R')
 
     return pdf_response(pdf, f"custody-{employee.get('name') or employee_id}.pdf")
+
+
+@app.route('/api/disposal/<request_id>/pdf', methods=['GET'])
+def disposal_pdf(request_id):
+    err = require_page('disposal')
+    if err:
+        return err
+
+    disposal_list = load_table('disposal_requests')
+    req = next((r for r in disposal_list if r.get('id') == request_id), None)
+    if not req:
+        return jsonify({'error': 'الطلب غير موجود'}), 404
+
+    snapshot = req.get('snapshot') or {}
+    source_table = req.get('sourceTable')
+    label = snapshot.get('code') or snapshot.get('name') or 'قطعة'
+
+    pdf = new_pdf()
+    pdf_title(pdf, 'طلب إتلاف أصل', 'جمعية الإحسان للخدمات الاجتماعية')
+    pdf_row(pdf, 'نوع الأصل', DISPOSAL_SOURCE_LABELS.get(source_table, source_table))
+    pdf_row(pdf, 'الحالة', req.get('status'))
+    pdf_row(pdf, 'سبب الإتلاف', req.get('reason'))
+    pdf_row(pdf, 'تاريخ الطلب', req.get('requestedAt'))
+    if req.get('decidedAt'):
+        pdf_row(pdf, 'تاريخ القرار', req.get('decidedAt'))
+
+    pdf_section(pdf, 'تفاصيل القطعة وقت الطلب')
+    schema = TABLE_SCHEMAS.get(source_table, [])
+    if schema:
+        row_values = record_to_row(source_table, snapshot)
+        for (_key, col_label), value in zip(schema, row_values):
+            pdf_row(pdf, col_label, value)
+
+    pdf.ln(10)
+    pdf.set_font('Body', '', 12)
+    pdf.set_text_color(*PDF_TEXT)
+    pdf_paragraph(pdf, 'نقر بأن القطعة الموضّحة بياناتها أعلاه غير قابلة للاستخدام أو لا حاجة لها، ونوافق على إتلافها/التصرف بها حسب الإجراءات المعتمدة.')
+
+    pdf.ln(12)
+    for sig_label in [
+        'توقيع مدير وحدة التقنية والتحول الرقمي',
+        'موافقة مدير الشؤون المالية والإدارية',
+        'اعتماد المدير التنفيذي',
+    ]:
+        y = pdf.get_y()
+        pdf.set_draw_color(*PDF_LINE)
+        pdf.line(18, y, 192, y)
+        pdf.set_font('Body', '', 11)
+        pdf.set_text_color(*PDF_MUTED)
+        pdf.set_xy(18, y + 2)
+        pdf.cell(174, 7, rtl(sig_label), align='R')
+        pdf.ln(18)
+
+    return pdf_response(pdf, f"disposal-{label}.pdf")
 
 
 # ------------------------------------------------------------------

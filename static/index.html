@@ -203,6 +203,7 @@
       <div class="nav-item locked" data-page="secure" id="nav-secure"><span class="ic">🔒</span> القسم الآمن</div>
       <div class="nav-item locked" data-page="users" id="nav-users"><span class="ic">👤</span> إدارة المستخدمين</div>
       <div class="nav-item locked" data-page="requests" id="nav-requests"><span class="ic">📥</span> طلبات الإضافة</div>
+      <div class="nav-item locked" data-page="disposal" id="nav-disposal"><span class="ic">♻️</span> طلبات الإتلاف</div>
     </nav>
 
     <div class="sidebar-foot" id="logout-btn">↩ تسجيل الخروج</div>
@@ -549,6 +550,25 @@
         </div>
       </div>
     </section>
+
+    <section class="page" id="disposal">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">♻️ إتلاف</div>
+          <h2>طلبات الإتلاف</h2>
+          <p>اسحب "♻️" من صف أي جهاز/قطعة بأي تبويب لطلب إتلافها. الموافقة تحذفها نهائيًا من قوائمها وتبقيها هنا فقط كأرشيف.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>الطلبات والأرشيف</h3><span class="count" id="count-disposal">0 طلب</span></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>القطعة</th><th>المصدر</th><th>مقدّم الطلب</th><th>التاريخ</th><th>الحالة</th><th></th></tr></thead>
+          <tbody id="tbody-disposal"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -761,6 +781,20 @@
   </div>
 </div>
 
+<!-- ===== نموذج طلب إتلاف ===== -->
+<div class="overlay" id="modal-disposal">
+  <div class="modal">
+    <div class="modal-head"><h3>♻️ طلب إتلاف</h3><button class="close" onclick="closeModal('modal-disposal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="disposal-source-table">
+      <input type="hidden" id="disposal-source-id">
+      <div><label>القطعة</label><input id="disposal-item-label" disabled></div>
+      <div><label>سبب الإتلاف (اختياري)</label><textarea id="disposal-reason" placeholder="مثال: تالف، منتهي العمر الافتراضي، لا حاجة له..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('modal-disposal')">إلغاء</button><button class="btn-save" onclick="submitDisposalRequest()">إرسال طلب الإتلاف</button></div>
+  </div>
+</div>
+
 <!-- ===== نموذج مشترك: السيرفرات / أجهزة الأمان / الأبواب الذكية ===== -->
 <div class="overlay" id="modal-asset">
   <div class="modal">
@@ -860,16 +894,17 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[], requests:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[], requests:[], disposal_requests:[] };
 let currentRole = null;
 let currentUsername = null;
 let currentAllowedPages = [];
-const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors','submitrequest','requests'];
+const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors','submitrequest','requests','disposal'];
 const PAGE_LABELS = {
   search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', stock:'المخزون', network:'الشبكات والراوترات',
   servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
-  submitrequest:'تقديم طلب', requests:'طلبات الإضافة',
+  submitrequest:'تقديم طلب', requests:'طلبات الإضافة', disposal:'طلبات الإتلاف',
 };
+function canDispose(){ return currentRole==='admin' || currentAllowedPages.includes('disposal'); }
 const revealedSecure = new Set();
 const revealedEmpFields = new Set();
 
@@ -960,21 +995,22 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 });
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
     apiGet('servers'), apiGet('security'), apiGet('doors'),
     currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
     currentRole==='admin' ? apiGet('users') : Promise.resolve([]),
-    apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items'), apiGet('requests')
+    apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items'), apiGet('requests'),
+    canDispose() ? apiGet('disposal_requests') : Promise.resolve([])
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests };
+  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests };
   renderAll();
 }
 
 function renderAll(){
   renderEmployees(); renderDevices(); renderCustody(); renderStock(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
   renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
-  renderMyRequests(); renderRequestsAdmin();
+  renderMyRequests(); renderRequestsAdmin(); renderDisposal();
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
 
@@ -1015,6 +1051,7 @@ function renderAssetTable(table){
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openHistoryModal('${table}','${a.id}')" title="سجل العهدة">📜</button>
         <button class="icon-btn" onclick="openAssetForm('${table}','${a.id}')">✎</button>
+        ${disposalButtonHtml(table, a.id, a.name)}
         <button class="icon-btn" onclick="deleteRecord('${table}','${a.id}')">🗑</button>
       </div></td>
     </tr>`).join('');
@@ -1194,6 +1231,7 @@ function deviceRowHtml(d){
         <button class="icon-btn" onclick="openDeviceView('${d.id}')" title="عرض">🔎</button>
         <button class="icon-btn" onclick="downloadPdf('devices','${d.id}')" title="تصدير PDF">📄</button>
         <button class="icon-btn" onclick="openDeviceForm('${d.id}')">✎</button>
+        ${disposalButtonHtml('devices', d.id, d.code)}
         <button class="icon-btn" onclick="deleteRecord('devices','${d.id}')">🗑</button>
       </div></td>
     </tr>`;
@@ -1346,6 +1384,7 @@ function renderStock(){
       <td>${statusBadge(item.status, STOCK_STATUS_MAP)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openStockItemForm('${item.id}')">✎</button>
+        ${disposalButtonHtml('stock_items', item.id, item.code)}
         <button class="icon-btn" onclick="deleteRecord('stock_items','${item.id}')">🗑</button>
       </div></td>
     </tr>`).join('');
@@ -1751,6 +1790,116 @@ async function decideRequest(id, decision){
   }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
 }
 
+/* ============ طلبات الإتلاف ============ */
+const DISPOSAL_SOURCE_LABELS = { devices:'جهاز كمبيوتر', servers:'سيرفر', security:'جهاز أمان', doors:'باب ذكي', switches:'سويتش', routers:'راوتر', stock_items:'قطعة مخزون' };
+const DISPOSAL_STATUS_MAP = { 'معلق':'warn', 'تمت الموافقة':'off', 'تم الرفض':'ok' };
+
+function disposalButtonHtml(table, id, label){
+  if(!canDispose()) return '';
+  return `<button class="icon-btn" onclick="openDisposalForm('${table}','${id}','${escapeHtml(label).replace(/'/g,"\\'")}')" title="طلب إتلاف">♻️</button>`;
+}
+
+function openDisposalForm(sourceTable, sourceId, label){
+  document.getElementById('disposal-source-table').value = sourceTable;
+  document.getElementById('disposal-source-id').value = sourceId;
+  document.getElementById('disposal-item-label').value = label;
+  document.getElementById('disposal-reason').value = '';
+  openModal('modal-disposal');
+}
+
+async function submitDisposalRequest(){
+  const sourceTable = document.getElementById('disposal-source-table').value;
+  const sourceId = document.getElementById('disposal-source-id').value;
+  const reason = document.getElementById('disposal-reason').value.trim();
+  try{
+    const res = await fetch('/api/disposal/request', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ sourceTable, sourceId, reason }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر إرسال طلب الإتلاف');
+      return;
+    }
+    closeModal('modal-disposal');
+    await loadAll();
+    showToast('تم إرسال طلب الإتلاف');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+}
+
+function renderDisposal(){
+  const tbody = document.getElementById('tbody-disposal');
+  if(!tbody) return;
+  document.getElementById('count-disposal').textContent = DATA.disposal_requests.length + ' طلب';
+  if(DATA.disposal_requests.length===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">لا توجد طلبات إتلاف بعد</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = DATA.disposal_requests.slice().reverse().map(r=>{
+    const snap = r.snapshot || {};
+    const label = snap.code || snap.name || '—';
+    return `
+    <tr>
+      <td>${escapeHtml(label)}</td>
+      <td>${escapeHtml(DISPOSAL_SOURCE_LABELS[r.sourceTable]||r.sourceTable)}</td>
+      <td>${escapeHtml(r.requestedBy)}</td>
+      <td class="mono">${escapeHtml(r.requestedAt)||'—'}</td>
+      <td>${statusBadge(r.status, DISPOSAL_STATUS_MAP)}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="openDisposalView('${r.id}')" title="عرض">🔎</button>
+        <button class="icon-btn" onclick="downloadDisposalPdf('${r.id}')" title="طباعة PDF">🖨</button>
+        ${r.status==='معلق' ? `
+          <button class="icon-btn" onclick="decideDisposal('${r.id}','approve')" title="موافقة">✔</button>
+          <button class="icon-btn" onclick="decideDisposal('${r.id}','reject')" title="رفض">✕</button>
+        ` : ''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function downloadDisposalPdf(id){
+  window.location.href = '/api/disposal/'+id+'/pdf';
+}
+
+function openDisposalView(id){
+  const req = DATA.disposal_requests.find(r=>r.id===id);
+  if(!req) return;
+  const snap = req.snapshot || {};
+  document.getElementById('view-modal-title').textContent = '♻️ تفاصيل طلب الإتلاف';
+  let html = '';
+  html += viewRow('نوع الأصل', escapeHtml(DISPOSAL_SOURCE_LABELS[req.sourceTable]||req.sourceTable));
+  html += viewRow('القطعة', escapeHtml(snap.code || snap.name)||'—');
+  html += viewRow('مقدّم الطلب', escapeHtml(req.requestedBy));
+  html += viewRow('تاريخ الطلب', escapeHtml(req.requestedAt)||'—');
+  html += viewRow('الحالة', statusBadge(req.status, DISPOSAL_STATUS_MAP));
+  html += viewRow('سبب الإتلاف', escapeHtml(req.reason)||'—');
+  if(req.decidedAt){
+    html += viewRow('تاريخ القرار', escapeHtml(req.decidedAt));
+    html += viewRow('بواسطة', escapeHtml(req.decidedBy)||'—');
+  }
+  if(req.decisionNote) html += viewRow('ملاحظة القرار', escapeHtml(req.decisionNote));
+  document.getElementById('view-body').innerHTML = html;
+  openModal('modal-view');
+}
+
+async function decideDisposal(id, decision){
+  if(decision==='approve' && !confirm('تأكيد الموافقة؟ القطعة بتُحذف نهائيًا من قوائمها وتبقى بأرشيف الإتلاف فقط.')) return;
+  const note = decision==='reject' ? (prompt('ملاحظة (اختياري):') || '') : '';
+  try{
+    const res = await fetch('/api/disposal/'+id+'/decision', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+      body: JSON.stringify({ decision, note }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>null);
+      showToast(body && body.error ? '⚠ ' + body.error : '⚠ تعذّر تنفيذ الإجراء');
+      return;
+    }
+    await loadAll();
+    showToast(decision==='approve' ? 'تمت الموافقة وحُذفت القطعة من قوائمها' : 'تم رفض طلب الإتلاف');
+  }catch(e){ showToast('⚠ تعذّر الاتصال بالسيرفر'); }
+}
+
 /* ============ عرض: السويتشات ============ */
 function renderSwitches(){
   const tbody = document.getElementById('tbody-switches');
@@ -1769,6 +1918,7 @@ function renderSwitches(){
       <td>${statusBadge(s.status, CONN_STATUS_MAP)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openSwitchForm('${s.id}')">✎</button>
+        ${disposalButtonHtml('switches', s.id, s.name)}
         <button class="icon-btn" onclick="deleteRecord('switches','${s.id}')">🗑</button>
       </div></td>
     </tr>`).join('');
@@ -1792,6 +1942,7 @@ function renderRouters(){
       <td>${statusBadge(r.status, CONN_STATUS_MAP)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openRouterForm('${r.id}')">✎</button>
+        ${disposalButtonHtml('routers', r.id, r.name)}
         <button class="icon-btn" onclick="deleteRecord('routers','${r.id}')">🗑</button>
       </div></td>
     </tr>`).join('');
