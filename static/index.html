@@ -34,6 +34,9 @@
   .login-box p{ color:var(--muted); font-size:13px; margin-bottom:22px; text-align:center; }
   .field{ margin-bottom:14px; }
   .quick-search{ width:100%; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:14px; }
+  .role-option{ flex:1; padding:14px; border:1.5px solid var(--line); border-radius:10px; cursor:pointer; text-align:center; transition:.15s; background:var(--surface); }
+  .role-option:hover{ border-color:var(--accent); }
+  .role-option.selected{ border-color:var(--accent); background:var(--accent-dim); }
   .field label{ display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
   .field input{ width:100%; padding:11px 12px; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:'Azer', sans-serif; font-size:13px; }
   .field input:focus{ outline:none; border-color:var(--accent); }
@@ -783,11 +786,21 @@
       <input type="hidden" id="user-original-username">
       <div><label>اسم المستخدم <span class="req">*</span></label><input id="user-username" placeholder="مثال: k.mutairi"></div>
       <div><label>كلمة المرور <span id="user-pass-req"></span></label><input type="password" id="user-password" placeholder="اتركه فاضي للإبقاء على نفس كلمة المرور"></div>
-      <div><label>الصلاحية</label>
-        <select id="user-role">
-          <option value="user">مستخدم عادي (حسب التبويبات المحددة أدناه)</option>
-          <option value="admin">مسؤول النظام (يشوف كل شي، بما فيه القسم الآمن وإدارة المستخدمين)</option>
-        </select>
+      <div>
+        <label>الصلاحية</label>
+        <input type="hidden" id="user-role" value="user">
+        <div style="display:flex; gap:10px;">
+          <div class="role-option" id="role-opt-admin" onclick="selectUserRole('admin')">
+            <div style="font-size:22px;">🛡️</div>
+            <div style="font-weight:700;">مستخدم مسؤول</div>
+            <div style="font-size:12px; color:var(--muted);">كل الصلاحيات تلقائيًا — يشوف كل التبويبات</div>
+          </div>
+          <div class="role-option" id="role-opt-user" onclick="selectUserRole('user')">
+            <div style="font-size:22px;">👤</div>
+            <div style="font-weight:700;">مستخدم عادي</div>
+            <div style="font-size:12px; color:var(--muted);">حسب التبويبات المحددة أدناه</div>
+          </div>
+        </div>
       </div>
       <div id="user-pages-wrap">
         <label>التبويبات المتاحة لهذا المستخدم</label>
@@ -2110,7 +2123,12 @@ function toggleUserPagesVisibility(){
   const isAdmin = document.getElementById('user-role').value === 'admin';
   document.getElementById('user-pages-wrap').style.display = isAdmin ? 'none' : 'block';
 }
-document.getElementById('user-role').addEventListener('change', toggleUserPagesVisibility);
+function selectUserRole(role){
+  document.getElementById('user-role').value = role;
+  document.getElementById('role-opt-admin').classList.toggle('selected', role==='admin');
+  document.getElementById('role-opt-user').classList.toggle('selected', role==='user');
+  toggleUserPagesVisibility();
+}
 
 function openUserForm(username){
   const u = username ? DATA.users.find(x=>x.username===username) : null;
@@ -2121,9 +2139,8 @@ function openUserForm(username){
   document.getElementById('user-password').value = '';
   document.getElementById('user-pass-req').textContent = u ? '' : '*';
   document.getElementById('user-pass-req').className = u ? '' : 'req';
-  document.getElementById('user-role').value = u ? u.role : 'user';
+  selectUserRole(u ? u.role : 'user');
   renderUserPagesList(u ? u.allowedPages : []);
-  toggleUserPagesVisibility();
   openModal('modal-user');
 }
 
