@@ -352,7 +352,7 @@
         </div>
         <div class="head-actions">
           <button class="btn-ghost" id="btn-open-devicefilter" onclick="openDeviceFilter()">🧰 تصفية</button>
-          <button class="btn-add" onclick="openDeviceForm()">＋ إضافة جهاز</button>
+          <button class="btn-add admin-only-add" onclick="openDeviceForm()">＋ إضافة جهاز</button>
         </div>
       </div>
       <div class="field" style="max-width:460px;">
@@ -380,8 +380,8 @@
           <p>موقع كل جهاز شبكة. بيانات الدخول محجوبة هنا عمدًا وتُدار من القسم الآمن.</p>
         </div>
         <div class="head-actions">
-          <button class="btn-add" onclick="openSwitchForm()">＋ سويتش</button>
-          <button class="btn-add" onclick="openRouterForm()">＋ راوتر</button>
+          <button class="btn-add admin-only-add" onclick="openSwitchForm()">＋ سويتش</button>
+          <button class="btn-add admin-only-add" onclick="openRouterForm()">＋ راوتر</button>
         </div>
       </div>
       <div class="field" style="max-width:460px;">
@@ -415,7 +415,7 @@
           <h2>السيرفرات</h2>
           <p>موقع كل سيرفر، الموظف المسؤول عنه، وسجل من حازه سابقًا.</p>
         </div>
-        <button class="btn-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
+        <button class="btn-add admin-only-add" onclick="openAssetForm('servers')">＋ إضافة سيرفر</button>
       </div>
       <div class="field" style="max-width:460px;">
         <input id="search-servers" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
@@ -438,7 +438,7 @@
           <h2>أجهزة الأمان</h2>
           <p>كاميرات، أنظمة إنذار، وأجهزة مراقبة — موقعها والمسؤول عنها.</p>
         </div>
-        <button class="btn-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
+        <button class="btn-add admin-only-add" onclick="openAssetForm('security')">＋ إضافة جهاز أمان</button>
       </div>
       <div class="field" style="max-width:460px;">
         <input id="search-security" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
@@ -461,7 +461,7 @@
           <h2>الأبواب الذكية</h2>
           <p>موقع كل باب ذكي وحالته والمسؤول عنه.</p>
         </div>
-        <button class="btn-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
+        <button class="btn-add admin-only-add" onclick="openAssetForm('doors')">＋ إضافة باب ذكي</button>
       </div>
       <div class="field" style="max-width:460px;">
         <input id="search-doors" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
@@ -2513,6 +2513,9 @@ async function applyRoleUI(role, allowedPages, username){
     const children = group.querySelectorAll('.nav-child');
     const hasAny = Array.from(children).some(c=>currentAllowedPages.includes(c.dataset.page));
     group.querySelector('.nav-parent').classList.toggle('locked', !hasAny);
+  });
+  document.querySelectorAll('.admin-only-add').forEach(btn=>{
+    btn.style.display = role==='admin' ? '' : 'none';
   });
 }
 

@@ -106,6 +106,9 @@ DISPOSAL_SOURCE_LABELS = {
 }
 ADMIN_ONLY_TABLES = {'secure'}
 
+# جداول ما يُسمح بإضافة سجل جديد فيها مباشرة إلا لمسؤول النظام — أي إضافة أخرى لازم تمر بتبويب "تقديم طلب"
+DIRECT_ADD_RESTRICTED_TABLES = {'devices', 'switches', 'routers', 'servers', 'security', 'doors'}
+
 # الطلبات — الجدول الهدف اللي يتحول له الطلب عند القبول (سويتش/راوتر يتحدد حسب networkSubtype)
 REQUEST_TARGET_TABLE = {
     'device': 'devices',
@@ -487,12 +490,17 @@ def upsert_record(table):
         if owner:
             return jsonify({'error': f"الجهاز {record['device']} بعهدة {owner.get('name')} بالفعل"}), 409
 
+    existing_idx = None
     if record.get('id'):
-        idx = next((i for i, r in enumerate(records) if r.get('id') == record['id']), None)
-        if idx is not None:
-            records[idx] = record
-        else:
-            records.append(record)
+        existing_idx = next((i for i, r in enumerate(records) if r.get('id') == record['id']), None)
+
+    if existing_idx is None and table in DIRECT_ADD_RESTRICTED_TABLES and current_role() != 'admin':
+        return jsonify({'error': 'الإضافة المباشرة غير متاحة — قدّم طلبًا من تبويب "تقديم طلب" وسيراجعه مسؤول النظام'}), 403
+
+    if existing_idx is not None:
+        records[existing_idx] = record
+    elif record.get('id'):
+        records.append(record)
     else:
         record['id'] = uuid.uuid4().hex
         records.append(record)
