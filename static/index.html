@@ -365,8 +365,7 @@
         <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>المعرّف</th><th>النوع</th><th>المعالج</th><th>الرام</th><th>التخزين</th>
-            <th>النظام</th><th>التراخيص</th><th>المكتب/القسم</th><th>المستخدم</th><th>الحالة</th><th></th>
+            <th>اسم الجهاز</th><th>بعهدة من</th><th></th>
           </tr></thead>
           <tbody id="tbody-devices"></tbody>
         </table>
@@ -1332,22 +1331,10 @@ function openEmployeeView(id){
 
 /* ============ عرض: الأجهزة ============ */
 function deviceRowHtml(d){
-  const lic = [];
-  if(d.licOffice) lic.push(`<span class="badge ok"><span class="dot"></span>Office</span>`);
-  if(d.licWindows) lic.push(`<span class="badge ok"><span class="dot"></span>Windows</span>`);
-  if(lic.length===0) lic.push(`<span class="badge off"><span class="dot"></span>لا يوجد</span>`);
   return `
     <tr>
       <td class="mono">${escapeHtml(d.code)}</td>
-      <td>${escapeHtml(d.type)}</td>
-      <td>${escapeHtml(d.cpu)||'—'}</td>
-      <td>${escapeHtml(d.ram)||'—'}</td>
-      <td>${escapeHtml(d.storage)||'—'}</td>
-      <td>${escapeHtml(d.os)||'—'}</td>
-      <td>${lic.join(' ')}</td>
-      <td>${escapeHtml(d.office)||'—'}</td>
       <td>${escapeHtml(d.user)||'—'}</td>
-      <td>${statusBadge(d.status, DEV_STATUS_MAP)}</td>
       <td><div class="row-actions">
         <button class="icon-btn" onclick="openDeviceView('${d.id}')" title="عرض">🔎</button>
         <button class="icon-btn" onclick="downloadPdf('devices','${d.id}')" title="تصدير PDF">📄</button>
@@ -1383,7 +1370,7 @@ function renderDevices(){
     ? (list.length + ' من أصل ' + DATA.devices.length)
     : (list.length + ' سجل');
   if(list.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">${narrowed ? 'لا توجد أجهزة مطابقة' : 'لا توجد أجهزة بعد — اضغط "＋ إضافة جهاز"'}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="3">${narrowed ? 'لا توجد أجهزة مطابقة' : 'لا توجد أجهزة بعد — اضغط "＋ إضافة جهاز"'}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(deviceRowHtml).join('');
