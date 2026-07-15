@@ -126,6 +126,10 @@ ASSET_SCHEMA = [
     ('name', 'اسم الجهاز'), ('location', 'الموقع'), ('floor', 'الدور'),
     ('custodian', 'بعهدة من'), ('model', 'الموديل'), ('specs', 'المواصفات'), ('status', 'الحالة'),
 ]
+AUDIO_SCHEMA = [
+    ('name', 'نوع الجهاز'), ('location', 'الموقع'), ('floor', 'الدور'),
+    ('custodian', 'بعهدة من'), ('model', 'الموديل'), ('specs', 'المواصفات'), ('status', 'الحالة'),
+]
 
 TABLE_SCHEMAS = {
     'employees': [
@@ -153,7 +157,7 @@ TABLE_SCHEMAS = {
     'servers': ASSET_SCHEMA,
     'security': ASSET_SCHEMA,
     'doors': ASSET_SCHEMA,
-    'audio': ASSET_SCHEMA,
+    'audio': AUDIO_SCHEMA,
     'secure': [
         ('linked', 'مرتبط بـ'), ('user', 'اسم المستخدم'), ('pass', 'كلمة المرور'), ('notes', 'ملاحظات'),
     ],

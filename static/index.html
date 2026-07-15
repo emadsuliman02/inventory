@@ -489,13 +489,13 @@
         <button class="btn-add admin-only-add" onclick="openAssetForm('audio')">＋ إضافة جهاز صوتي</button>
       </div>
       <div class="field" style="max-width:460px;">
-        <input id="search-audio" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
+        <input id="search-audio" class="quick-search" placeholder="ابحث بنوع الجهاز، الموقع، المسؤول، الموديل، المواصفات...">
       </div>
       <div class="panel">
         <div class="panel-head"><h3>قائمة الأجهزة الصوتية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-audio">0 سجل</span><button class="icon-btn" onclick="exportTable('audio')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('audio')" title="استيراد Excel">⬆</button></div></div>
         <div class="table-wrap">
         <table>
-          <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
+          <thead><tr><th>نوع الجهاز</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
           <tbody id="tbody-audio"></tbody>
         </table>
         </div>
@@ -893,7 +893,12 @@
       <input type="hidden" id="asset-table">
       <input type="hidden" id="asset-id">
       <input type="hidden" id="asset-prev-custodian">
-      <div><label>اسم الجهاز <span class="req">*</span></label><input id="asset-name" placeholder="مثال: SRV-01"></div>
+      <div><label><span id="asset-name-label-text">اسم الجهاز</span> <span class="req">*</span></label>
+        <input id="asset-name" placeholder="مثال: SRV-01">
+        <select id="asset-name-audio" style="display:none;">
+          <option value="">اختر نوع الجهاز</option>
+        </select>
+      </div>
       <div><label>الموقع</label><input id="asset-location" placeholder="مثال: غرفة السيرفرات"></div>
       <div><label>الدور</label><input id="asset-floor" placeholder="مثال: الدور الأول"></div>
       <div><label>بعهدة من (اختياري)</label><select id="asset-custodian"><option value="">بدون مسؤول</option></select></div>
@@ -1174,7 +1179,12 @@ function openAssetForm(table, id){
   document.getElementById('asset-table').value = table;
   document.getElementById('asset-id').value = rec ? rec.id : '';
   document.getElementById('asset-prev-custodian').value = rec ? (rec.custodian||'') : '';
-  document.getElementById('asset-name').value = rec ? rec.name : '';
+  const isAudio = table === 'audio';
+  document.getElementById('asset-name-label-text').textContent = isAudio ? 'نوع الجهاز' : 'اسم الجهاز';
+  document.getElementById('asset-name').style.display = isAudio ? 'none' : 'block';
+  document.getElementById('asset-name-audio').style.display = isAudio ? 'block' : 'none';
+  document.getElementById('asset-name').value = isAudio ? '' : (rec ? rec.name : '');
+  document.getElementById('asset-name-audio').value = isAudio ? (rec ? rec.name : '') : '';
   document.getElementById('asset-location').value = rec ? (rec.location||'') : '';
   document.getElementById('asset-floor').value = rec ? (rec.floor||'') : '';
   fillEmployeeOptions(document.getElementById('asset-custodian'), rec ? rec.custodian : '');
@@ -1187,8 +1197,8 @@ function openAssetForm(table, id){
 
 async function saveAsset(){
   const table = document.getElementById('asset-table').value;
-  const name = document.getElementById('asset-name').value.trim();
-  if(!name){ showToast('⚠ اسم الجهاز إجباري'); return; }
+  const name = table === 'audio' ? document.getElementById('asset-name-audio').value : document.getElementById('asset-name').value.trim();
+  if(!name){ showToast(table === 'audio' ? '⚠ اختر نوع الجهاز' : '⚠ اسم الجهاز إجباري'); return; }
 
   const id = document.getElementById('asset-id').value || undefined;
   const prevCustodian = document.getElementById('asset-prev-custodian').value;
@@ -1577,6 +1587,8 @@ const DEPARTMENT_OPTIONS = [
   'المراجعة الداخلية','الخدمات الرعوية','الخدمات التنموية','خدمة المجتمع','التطوع',
   'الإتصال المؤسسي','التقنية والتحول الرقمي','الخدمات المساندة',
 ];
+const AUDIO_TYPE_OPTIONS = ['ميكسر','مايكروفون لاسلكي','مايكروفون سلكي','سماعات جدارية','سماعات متنقلة'];
+document.getElementById('asset-name-audio').innerHTML = '<option value="">اختر نوع الجهاز</option>' + AUDIO_TYPE_OPTIONS.map(o=>`<option>${o}</option>`).join('');
 
 const REQUEST_FIELDS = {
   device: [
@@ -1615,7 +1627,7 @@ const REQUEST_FIELDS = {
     {key:'specs', label:'المواصفات'},
   ],
   audio: [
-    {key:'name', label:'اسم الجهاز', required:true},
+    {key:'name', label:'نوع الجهاز', required:true, type:'select', options:AUDIO_TYPE_OPTIONS},
     {key:'location', label:'الموقع'},
     {key:'floor', label:'الدور'},
     {key:'custodian', label:'بعهدة من', type:'employeeSelect'},
