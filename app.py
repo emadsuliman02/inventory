@@ -61,7 +61,7 @@ ACCOUNTS_FILE = os.path.join(BASE_DIR, 'accounts.json')
 # التبويبات القابلة للتخصيص لحسابات "مستخدم عادي" — لوحة المعلومات دايمًا
 # متاحة للجميع، والقسم الآمن وإدارة المستخدمين دايمًا حصرية لمسؤول النظام.
 ASSIGNABLE_PAGES = [
-    'search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors',
+    'search', 'employees', 'devices', 'custody', 'stock', 'network', 'servers', 'security', 'doors', 'audio',
     'submitrequest', 'requests', 'disposal',
 ]
 
@@ -94,26 +94,27 @@ def allowed_pages_for(account):
 
 
 TABLES = [
-    'employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'secure',
+    'employees', 'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'audio', 'secure',
     'warehouses', 'stock_categories', 'stock_items', 'requests', 'disposal_requests',
 ]
 
 # الجداول اللي يجوز طلب إتلاف قطعة منها
-DISPOSABLE_TABLES = {'devices', 'servers', 'security', 'doors', 'switches', 'routers', 'stock_items'}
+DISPOSABLE_TABLES = {'devices', 'servers', 'security', 'doors', 'audio', 'switches', 'routers', 'stock_items'}
 DISPOSAL_SOURCE_LABELS = {
-    'devices': 'جهاز كمبيوتر', 'servers': 'سيرفر', 'security': 'جهاز أمان', 'doors': 'باب ذكي',
+    'devices': 'جهاز كمبيوتر', 'servers': 'سيرفر', 'security': 'جهاز أمان', 'doors': 'باب ذكي', 'audio': 'جهاز صوتي',
     'switches': 'سويتش', 'routers': 'راوتر', 'stock_items': 'قطعة مخزون',
 }
 ADMIN_ONLY_TABLES = {'secure'}
 
 # جداول ما يُسمح بإضافة سجل جديد فيها مباشرة إلا لمسؤول النظام — أي إضافة أخرى لازم تمر بتبويب "تقديم طلب"
-DIRECT_ADD_RESTRICTED_TABLES = {'devices', 'switches', 'routers', 'servers', 'security', 'doors'}
+DIRECT_ADD_RESTRICTED_TABLES = {'devices', 'switches', 'routers', 'servers', 'security', 'doors', 'audio'}
 
 # الطلبات — الجدول الهدف اللي يتحول له الطلب عند القبول (سويتش/راوتر يتحدد حسب networkSubtype)
 REQUEST_TARGET_TABLE = {
     'device': 'devices',
     'server': 'servers',
     'security': 'security',
+    'audio': 'audio',
     'employee': 'employees',
 }
 REQUEST_STATUSES = {'معلق', 'مقبول', 'مرجّع', 'مرفوض'}
@@ -152,6 +153,7 @@ TABLE_SCHEMAS = {
     'servers': ASSET_SCHEMA,
     'security': ASSET_SCHEMA,
     'doors': ASSET_SCHEMA,
+    'audio': ASSET_SCHEMA,
     'secure': [
         ('linked', 'مرتبط بـ'), ('user', 'اسم المستخدم'), ('pass', 'كلمة المرور'), ('notes', 'ملاحظات'),
     ],
@@ -726,7 +728,7 @@ def decide_request(request_id):
             new_record.setdefault('status', 'نشط')
         elif target_table in ('switches', 'routers'):
             new_record.setdefault('status', 'متصل')
-        elif target_table == 'servers' or target_table == 'security':
+        elif target_table in ('servers', 'security', 'audio'):
             new_record.setdefault('status', 'متاح')
         records.append(new_record)
         save_table(target_table, records)

@@ -218,6 +218,7 @@
           <div class="nav-item nav-child" data-page="servers">السيرفرات</div>
           <div class="nav-item nav-child" data-page="security">أجهزة الأمان</div>
           <div class="nav-item nav-child" data-page="doors">الأبواب الذكية</div>
+          <div class="nav-item nav-child" data-page="audio">الأجهزة الصوتية</div>
         </div>
       </div>
       <div class="nav-item" data-page="employees"><span class="ic">👥</span> الموظفون</div>
@@ -279,6 +280,7 @@
               <option value="network">سويتش / راوتر</option>
               <option value="server">سيرفر</option>
               <option value="security">جهاز أمان</option>
+              <option value="audio">جهاز صوتي</option>
               <option value="employee">موظف</option>
             </select>
           </div>
@@ -472,6 +474,29 @@
         <table>
           <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
           <tbody id="tbody-doors"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="audio">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">08 / السجل</div>
+          <h2>الأجهزة الصوتية</h2>
+          <p>مكبرات صوت، ميكروفونات، وأنظمة صوتية — موقعها والمسؤول عنها.</p>
+        </div>
+        <button class="btn-add admin-only-add" onclick="openAssetForm('audio')">＋ إضافة جهاز صوتي</button>
+      </div>
+      <div class="field" style="max-width:460px;">
+        <input id="search-audio" class="quick-search" placeholder="ابحث بالاسم، الموقع، المسؤول، الموديل، المواصفات...">
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>قائمة الأجهزة الصوتية</h3><div style="display:flex; align-items:center; gap:10px;"><span class="count" id="count-audio">0 سجل</span><button class="icon-btn" onclick="exportTable('audio')" title="تصدير Excel">⬇</button><button class="icon-btn" onclick="triggerImport('audio')" title="استيراد Excel">⬆</button></div></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>الاسم</th><th>الموقع</th><th>الدور</th><th>بعهدة من</th><th>الموديل</th><th>المواصفات</th><th>الحالة</th><th></th></tr></thead>
+          <tbody id="tbody-audio"></tbody>
         </table>
         </div>
       </div>
@@ -959,14 +984,14 @@
 
 <script>
 /* ============ الحالة العامة ============ */
-let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[], requests:[], disposal_requests:[] };
+let DATA = { employees:[], devices:[], switches:[], routers:[], servers:[], security:[], doors:[], audio:[], secure:[], users:[], warehouses:[], stock_categories:[], stock_items:[], requests:[], disposal_requests:[] };
 let currentRole = null;
 let currentUsername = null;
 let currentAllowedPages = [];
-const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors','submitrequest','requests','disposal'];
+const ASSIGNABLE_PAGES = ['search','employees','devices','custody','stock','network','servers','security','doors','audio','submitrequest','requests','disposal'];
 const PAGE_LABELS = {
   search:'البحث', employees:'الموظفون', devices:'أجهزة الكمبيوتر', custody:'العهد', stock:'المخزون', network:'الشبكات والراوترات',
-  servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية',
+  servers:'السيرفرات', security:'أجهزة الأمان', doors:'الأبواب الذكية', audio:'الأجهزة الصوتية',
   submitrequest:'تقديم طلب', requests:'طلبات الإضافة', disposal:'طلبات الإتلاف',
 };
 function canDispose(){ return currentRole==='admin' || currentAllowedPages.includes('disposal'); }
@@ -1079,21 +1104,21 @@ document.getElementById('import-file-input').addEventListener('change', async (e
 });
 
 async function loadAll(){
-  const [employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests] = await Promise.all([
+  const [employees, devices, switches, routers, servers, security, doors, audio, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests] = await Promise.all([
     apiGet('employees'), apiGet('devices'), apiGet('switches'), apiGet('routers'),
-    apiGet('servers'), apiGet('security'), apiGet('doors'),
+    apiGet('servers'), apiGet('security'), apiGet('doors'), apiGet('audio'),
     currentRole==='admin' ? apiGet('secure') : Promise.resolve([]),
     currentRole==='admin' ? apiGet('users') : Promise.resolve([]),
     apiGet('warehouses'), apiGet('stock_categories'), apiGet('stock_items'), apiGet('requests'),
     canDispose() ? apiGet('disposal_requests') : Promise.resolve([])
   ]);
-  DATA = { employees, devices, switches, routers, servers, security, doors, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests };
+  DATA = { employees, devices, switches, routers, servers, security, doors, audio, secure, users, warehouses, stock_categories, stock_items, requests, disposal_requests };
   renderAll();
 }
 
 function renderAll(){
   renderEmployees(); renderDevices(); renderCustody(); renderStock(); renderSwitches(); renderRouters(); renderSecure(); renderUsers(); renderStats();
-  renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors');
+  renderAssetTable('servers'); renderAssetTable('security'); renderAssetTable('doors'); renderAssetTable('audio');
   renderMyRequests(); renderRequestsAdmin(); renderDisposal();
   fillEmployeeOptions(document.getElementById('f-user'), document.getElementById('f-user').value);
 }
@@ -1104,16 +1129,16 @@ function renderStats(){
   document.getElementById('stat-switches').textContent = DATA.switches.length;
   document.getElementById('stat-routers').textContent = DATA.routers.length;
 
-  const allAssets = [...DATA.servers, ...DATA.security, ...DATA.doors];
+  const allAssets = [...DATA.servers, ...DATA.security, ...DATA.doors, ...DATA.audio];
   document.getElementById('stat-assets-total').textContent = allAssets.length;
   document.getElementById('stat-assets-available').textContent = allAssets.filter(a=>a.status==='متاح').length;
   document.getElementById('stat-assets-inuse').textContent = allAssets.filter(a=>a.status==='قيد الاستخدام').length;
   document.getElementById('stat-assets-maint').textContent = allAssets.filter(a=>a.status==='تحت الصيانة').length;
 }
 
-/* ============ عرض عام: السيرفرات / أجهزة الأمان / الأبواب الذكية ============ */
+/* ============ عرض عام: السيرفرات / أجهزة الأمان / الأبواب الذكية / الأجهزة الصوتية ============ */
 const ASSET_STATUS_MAP = { 'متاح':'ok', 'قيد الاستخدام':'warn', 'تحت الصيانة':'off' };
-const ASSET_LABELS = { servers:'سيرفر', security:'جهاز أمان', doors:'باب ذكي' };
+const ASSET_LABELS = { servers:'سيرفر', security:'جهاز أمان', doors:'باب ذكي', audio:'جهاز صوتي' };
 
 function renderAssetTable(table){
   const tbody = document.getElementById('tbody-'+table);
@@ -1539,7 +1564,7 @@ async function saveStockItem(){
 }
 
 /* ============ طلبات الإضافة: تقديم / مراجعة الموظف / قرار المسؤول ============ */
-const REQUEST_TYPE_LABELS = { device:'كمبيوتر', network:'سويتش / راوتر', server:'سيرفر', security:'جهاز أمان', employee:'موظف' };
+const REQUEST_TYPE_LABELS = { device:'كمبيوتر', network:'سويتش / راوتر', server:'سيرفر', security:'جهاز أمان', audio:'جهاز صوتي', employee:'موظف' };
 const REQUEST_STATUS_MAP = { 'معلق':'warn', 'مقبول':'ok', 'مرجّع':'off', 'مرفوض':'off' };
 
 const ACCESSORY_LABELS = ['كيبورد','ماوس','مكبرات صوت','سماعات أذن','بلوتوث','واي فاي'];
@@ -1582,6 +1607,14 @@ const REQUEST_FIELDS = {
     {key:'specs', label:'المواصفات'},
   ],
   security: [
+    {key:'name', label:'اسم الجهاز', required:true},
+    {key:'location', label:'الموقع'},
+    {key:'floor', label:'الدور'},
+    {key:'custodian', label:'بعهدة من', type:'employeeSelect'},
+    {key:'model', label:'الموديل'},
+    {key:'specs', label:'المواصفات'},
+  ],
+  audio: [
     {key:'name', label:'اسم الجهاز', required:true},
     {key:'location', label:'الموقع'},
     {key:'floor', label:'الدور'},
@@ -2649,6 +2682,7 @@ bindQuickSearch('search-network', 'network', ()=>{ renderSwitches(); renderRoute
 bindQuickSearch('search-servers', 'servers', ()=>renderAssetTable('servers'));
 bindQuickSearch('search-security', 'security', ()=>renderAssetTable('security'));
 bindQuickSearch('search-doors', 'doors', ()=>renderAssetTable('doors'));
+bindQuickSearch('search-audio', 'audio', ()=>renderAssetTable('audio'));
 bindQuickSearch('search-custody', 'custody', renderCustody);
 bindQuickSearch('search-stock', 'stock', renderStock);
 bindQuickSearch('search-secure', 'secure', renderSecure);
